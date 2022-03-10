@@ -19,7 +19,7 @@ pages = {'Home' :('Home', Home.app),
          'PCA': ('PCA', PCA.app),
          'Expression': ('Barcode Abundance', Expression.app),
          'DiffAb': ('Differential Abundance', DiffAb.app),
-         'Pathway':('Pathway Analyses', Pathway.app)}
+         'Pathway':('Metabolic Pathways', Pathway.app)}
 
 for page_name, page in pages.items():
     app.add_page(page[0], page[1])
