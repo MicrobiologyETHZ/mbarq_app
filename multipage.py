@@ -4,6 +4,7 @@ Adapted from https://towardsdatascience.com/creating-multipage-applications-usin
 
 This file is the framework for generating multiple Streamlit applications
 through an object oriented framework.
+
 """
 
 
@@ -31,7 +32,7 @@ class MultiPage:
         })
 
     def run(self):
-        # Drodown to select the page to run
+        # Radio button to select the page to run
         page = st.sidebar.radio(
             'App Navigation',
             self.pages,
