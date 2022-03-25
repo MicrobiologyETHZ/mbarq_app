@@ -7,81 +7,106 @@ from itertools import cycle
 import dash_bio as dashbio
 
 
-def load_data(design_file, count_file):
-    sampleData = pd.read_csv(design_file, index_col=0)
-    countData = pd.read_csv((count_file), index_col=0)
-    return sampleData, countData
-
+def process_library_results(result_file, file_type='mageck'):
+    df = pd.read_csv(result_file, index_col=0)
+    if 'library' not in df.columns:
+        library_name = st.text_input("Add library name?", value='')
+        df['library'] = library_name
+    fixed_col_names = {'mageck': ['library', 'lfc', 'fdr', 'contrast', 'KEGG_Pathway']}
+    missing_cols = [c for c in fixed_col_names[file_type] if c not in df.columns]
+    if len(missing_cols) > 0:
+        st.markdown(
+            f"""The following columns are missing from the map files: {', '.join(missing_cols)}. 
+            Please rename the columns/rerun mBARq and try again. Skipping {result_file.name}""")
+        return pd.DataFrame()
+    df = df.rename({df.columns[0]: 'Name'}, axis=1)
+    return df
 
 def app():
-    st.write('# Differentical Abundance Results')
-    rfile = st.file_uploader('Load the analysis file')
-    rfile = "/Users/ansintsova/git_repos/mbarq_app/data/SL1344_test/library_10_1-unfiltered-results.kegg.csv"
+    st.markdown(""" # Library Map
 
-    clrs = px.colors.qualitative.D3
-    fdf = pd.read_csv(rfile, index_col=0)
+    ### Write a little explanation of what this page shows.
 
-    # there are fdr, lfc, contrast and KEGG_Pathway columns
-    fdf['log10FDR'] = -10*np.log10(fdf['fdr'])
-    fdf["KEGG_Pathway"] = fdf.KEGG_Pathway.str.split("- Salmonella", expand=True)[0]
-    fdf['Library'] = 'library_10_1'
-    contrasts = fdf['contrast'].sort_values().unique()
-    contrast_col, lfc_col, fdr_col = st.columns(3)
-    contrast_to_show = contrast_col.selectbox('Select a contrast', contrasts)
-    fdr = fdr_col.number_input('FDR cutoff', value=0.05)
-    lfc_th = lfc_col.number_input('Log FC cutoff (absolute)', value=1)
+    - Required Inputs
+    - How to use the graph
 
-    df = fdf[fdf.contrast == contrast_to_show].copy()
-    df['hit'] = ((abs(df['lfc']) > lfc_th) & (df['fdr'] < fdr))
+        """)
 
-    show_kegg =st.selectbox('Show KEGG Pathway', ['All'] + list(df.KEGG_Pathway.unique()))
+    with st.container():
+        st.subheader('Browse an example data set')
+        data_type = st.radio('Choose dataset to show', ['Look at an example'], index=0)
+        if data_type == 'Load my data':
+            result_files = st.file_uploader('Upload library map file', accept_multiple_files=True)
+        else:
+            result_files = [Path("/Users/ansintsova/git_repos/mbarq_app/data/SL1344_test/library_10_1-unfiltered-results.kegg.csv")]
+            st.subheader('Example mapping file')
+            st.write(pd.read_csv(result_files[0], index_col=0).sample(5))
+        if len(result_files) < 1:
+            st.stop()
 
-    if show_kegg != 'All':
-        df = df[df.KEGG_Pathway == show_kegg]
-    df = df.sort_values('lfc').reset_index().reset_index().rename({'index':'ranking'}, axis=1)
+    with st.container():
+        clrs = px.colors.qualitative.D3
+        result_dfs = []
+        for uploaded_result in result_files:
+            st.write(f"Processing {uploaded_result.name}")
+            df = process_library_results(uploaded_result)
+            result_dfs.append(df)
+        fdf = pd.concat(result_dfs)
+        fdf['log10FDR'] = -10*np.log10(fdf['fdr'])
+        fdf["KEGG_Pathway"] = fdf.KEGG_Pathway.str.split("- Salmonella", expand=True)[0] #todo needs to be done ahead of the app
+        contrasts = fdf['contrast'].sort_values().unique()
+        contrast_col, lfc_col, fdr_col = st.columns(3)
+        contrast_to_show = contrast_col.selectbox('Select a contrast', contrasts)
+        fdr = fdr_col.number_input('FDR cutoff', value=0.05)
+        lfc_th = lfc_col.number_input('Log FC cutoff (absolute)', value=1)
+        df = fdf[fdf.contrast == contrast_to_show].copy()
+        df['hit'] = ((abs(df['lfc']) > lfc_th) & (df['fdr'] < fdr))
+        show_kegg =st.selectbox('Show KEGG Pathway', ['All'] + list(df.KEGG_Pathway.unique()))
+        if show_kegg != 'All':
+            df = df[df.KEGG_Pathway == show_kegg]
+        df = df.sort_values('lfc').reset_index().reset_index().rename({'index':'ranking'}, axis=1)
+        fig = px.scatter(df, x='ranking', y='lfc', color='hit', size='log10FDR',
+                         height=700,
+                         color_discrete_map={
+                             True: clrs[1],
+                             False: clrs[0]},
+                         hover_name='Name',
+                         title=f"{contrast_to_show} - {show_kegg}",
+                         hover_data={'lfc':True,
+                                     'log10FDR': False,
+                                    'ranking': False,
+                                     'fdr': True},
+                         labels = {"ranking": '', 'lfc': 'Log2 FC'}
+                         )
+        fig.add_hline(y=0, line_width=2, line_dash="dash", line_color="grey")
+        fig.update_xaxes(showticklabels=False)
+        fig.update_layout( {'paper_bgcolor': 'rgba(0,0,0,0)', 'plot_bgcolor': 'rgba(0,0,0,0)'}, autosize=True,
+                          font=dict(size=18))
+        fig.update_traces(marker=dict(
+                                      line=dict(width=1,
+                                                color='DarkSlateGrey')),
+                          selector=dict(mode='markers'))
+        st.plotly_chart(fig, use_container_width=True)
+        #
 
-    fig = px.scatter(df, x='ranking', y='lfc', color='hit', size='log10FDR',
-                     height=700,
-                     color_discrete_map={
-                         True: clrs[1],
-                         False: clrs[0]},
-                     hover_name = 'Name',
-                     title = f"{contrast_to_show} - {show_kegg}",
-                     hover_data={'lfc':True,
-                                 'log10FDR': False,
-                                'ranking': False,
-                                 'fdr': True},
-                     labels = {"ranking": '', 'lfc': 'Log2 FC'}
-                     )
-    fig.add_hline(y=0, line_width=2, line_dash="dash", line_color="grey")
-    fig.update_xaxes(showticklabels=False)
-    fig.update_layout( {'paper_bgcolor': 'rgba(0,0,0,0)', 'plot_bgcolor': 'rgba(0,0,0,0)'}, autosize=True,
-                      font=dict(size=18))
-    fig.update_traces(marker=dict(
-                                  line=dict(width=1,
-                                            color='DarkSlateGrey')),
-                      selector=dict(mode='markers'))
-    st.plotly_chart(fig, use_container_width=True)
-    #
-
-    c1, c2 = st.columns(2)
-    show_kegg_heat1 = c1.selectbox('Show KEGG Pathway',  list(fdf.KEGG_Pathway.dropna().unique()), key='leftKegg')
-    heatDfLeft = fdf[fdf.KEGG_Pathway == show_kegg_heat1][['Name', 'lfc', 'contrast']].pivot(index="Name",
-                                                                                             columns='contrast',
-                                                                                             values='lfc')
-    show_kegg_heat2 = c2.selectbox('Show KEGG Pathway', list(fdf.KEGG_Pathway.dropna().unique()), key='rightKegg')
+        c1, c2 = st.columns(2)
+        show_kegg_heat1 = c1.selectbox('Show KEGG Pathway',  list(fdf.KEGG_Pathway.dropna().unique()), key='leftKegg')
+        heatDfLeft = fdf[fdf.KEGG_Pathway == show_kegg_heat1][['Name', 'lfc', 'contrast']].pivot(index="Name",
+                                                                                                 columns='contrast',
+                                                                                                 values='lfc')
+        show_kegg_heat2 = c2.selectbox('Show KEGG Pathway', list(fdf.KEGG_Pathway.dropna().unique()), key='rightKegg')
 
 
-    heatDfRight = fdf[fdf.KEGG_Pathway == show_kegg_heat2][['Name', 'lfc', 'contrast']].pivot(index="Name",
-                                                                                             columns='contrast',
-                                                                                            values='lfc')
+        heatDfRight = fdf[fdf.KEGG_Pathway == show_kegg_heat2][['Name', 'lfc', 'contrast']].pivot(index="Name",
+                                                                                                 columns='contrast',
+                                                                                                values='lfc')
 
-    fig2 = px.imshow(heatDfLeft, color_continuous_scale=px.colors.sequential.RdBu_r, color_continuous_midpoint=0,
-                         width=600, height=900)
-    fig3 = px.imshow(heatDfRight, color_continuous_scale=px.colors.sequential.RdBu_r, color_continuous_midpoint=0,
-                         width=600, height=900)
-    c1.plotly_chart(fig2, use_container_width=False)
-    c2.plotly_chart(fig3, use_container_width=False)
+        fig2 = px.imshow(heatDfLeft, color_continuous_scale=px.colors.sequential.RdBu_r, color_continuous_midpoint=0,
+                             width=600, height=900)
+        fig3 = px.imshow(heatDfRight, color_continuous_scale=px.colors.sequential.RdBu_r, color_continuous_midpoint=0,
+                             width=600, height=900)
+        c1.plotly_chart(fig2, use_container_width=False)
+        c2.plotly_chart(fig3, use_container_width=False)
 
     # compContrasts = st.multiselect('Select contrasts to compare', contrasts)
     # if not compContrasts:

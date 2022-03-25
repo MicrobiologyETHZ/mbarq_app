@@ -7,7 +7,7 @@ import plotly.express as px
 def process_library_map(uploaded_map):
     df = pd.read_csv(uploaded_map)
     if 'library' not in df.columns:
-        library_name = st.text_input("Please provide library name", value=uploaded_map.name)
+        library_name = st.text_input("Change library name?", value=uploaded_map.name)
         df['library'] = library_name
     fixed_col_names = ['barcode', 'number_of_reads', 'insertion_site', 'chr',
                        'multimap', 'distance_to_feature', 'strand', 'library']
@@ -22,21 +22,40 @@ def process_library_map(uploaded_map):
     df = df.fillna('NaN')  # todo check if this does anything, shouldn't
     return df, attr_names
 
+@st.cache
+def convert_df(df):
+    # IMPORTANT: Cache the conversion to prevent computation on every rerun
+    return df.to_csv(index=False).encode('utf-8')
+
 
 def app():
     st.markdown(""" # Library Map
     
-    Write a little explanation of what this page shows.
+    ### Visualize insertion position along the genome.
     
-    - Required Inputs
-    - How to use the graph
+    - Takes in library map **CSV** file (`*.annotated.csv`) produced by `mbarq map`. Expects to find the following columns in the file: `barcode`, `number_of_reads`, `insertion_site`, `chr`, `multimap`, `distance_to_feature`, `strand`. 
+    - Can load more than one library file at the same time to compare! 
+    - You can select which sequence (e.g. chromosome or plasmids) to display, and color the insertions by distance to feature, multimapping or library.
+    - You can click on the figure legend to only show a specific subset of data (i.e. if looking at multiple libraries, double clicking on the specific library name will show data for that library only)
     
     """)
 
-    with st.expander("Upload library map file"):
-        map_files = st.file_uploader('Upload library map file', accept_multiple_files=True)
-        # map_files = [Path('/Users/ansintsova/git_repos/mbarq_app/data/SL1344_test/library_10_1_closest.annotated.csv'),
-        #              Path('/Users/ansintsova/git_repos/mbarq_app/data/SL1344_test/library_10_1_copy_closest.annotated.csv')]
+    with st.container():
+        st.subheader('Load your own data or browse the example data set')
+        data_type = st.radio('Choose dataset to show', ['Look at an example', 'Load my data'], index=1)
+        if data_type == 'Load my data':
+            map_files = st.file_uploader('Upload library map file', accept_multiple_files=True)
+        else:
+            map_files = [Path('examples/example_library_mapping_file.annotated.csv')]
+            st.subheader('Example mapping file')
+            example_df = pd.read_csv(map_files[0])
+            st.write(example_df.sample(5))
+            st.download_button(
+                label="Download example data as CSV",
+                data=convert_df(example_df),
+                file_name='example_library_mapping_file.csv',
+                mime='text/csv',
+            )
 
         if len(map_files) < 1:
             st.stop()
@@ -69,7 +88,7 @@ def app():
         st.plotly_chart(fig, use_container_width=True)
 
     with st.container():
-        name_col = st.selectbox("Choose gene name column", attr_names)
+        name_col = st.selectbox("Choose attribute column", attr_names)
         table1 = (map_df.groupby('library')
                   .agg({'barcode': ['nunique'], name_col: ['nunique'], 'distance_to_feature': [lambda x: sum(x != 0)],
                         'multimap': ['sum']})

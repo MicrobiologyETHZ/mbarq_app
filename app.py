@@ -5,20 +5,19 @@ from pathlib import Path
 
 # Custom imports
 from multipage import MultiPage
-from pages import Home, Library, PCA, Expression, DiffAb, Pathway
+from pages import Home, Library, Exploratory, DiffAb, Pathway
 
 st.set_page_config(page_title="mBARq App", layout='wide',
-                   #page_icon=Image.open("/Users/ansintsova/git_repos/mbarq_app/data/images/image.png")
+                   page_icon=Image.open("images/image.png")
                    )
-st.title("mBARq Data Visualization and Mining")
-
+#st.title("mBARq Data Visualization and Mining")
+st.image("images/mbarq-logo.png")
 # Create an instance of the app
 app = MultiPage()
 
 pages = {'Home': ('Home', Home.app),
          'Library': ('Library Map', Library.app),
-         'PCA': ('PCA', PCA.app),
-         'Expression': ('Barcode Abundance', Expression.app),
+         'Exploratory': ('Exploratory Analysis', Exploratory.app),
          'DiffAb': ('Differential Abundance', DiffAb.app),
          'Pathway': ('Metabolic Pathways', Pathway.app)}
 
