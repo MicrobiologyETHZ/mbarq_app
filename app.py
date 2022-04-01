@@ -18,8 +18,8 @@ app = MultiPage()
 pages = {'Home': ('Home', Home.app),
          'Library': ('Library Map', Library.app),
          'Exploratory': ('Exploratory Analysis', Exploratory.app),
-         'DiffAb': ('Differential Abundance', DiffAb.app)}
-         #'MetModel': ('Metabolic Maps', Pathway.app)}
+         'DiffAb': ('Differential Abundance', DiffAb.app),
+         'MetModel': ('Metabolic Maps', Pathway.app)}
 
 for page_name, page in pages.items():
     app.add_page(page[0], page[1])
