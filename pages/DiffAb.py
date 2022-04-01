@@ -16,20 +16,27 @@ def process_library_results(result_file, file_type='mageck'):
     missing_cols = [c for c in fixed_col_names[file_type] if c not in df.columns]
     if len(missing_cols) > 0:
         st.markdown(
-            f"""The following columns are missing from the map files: {', '.join(missing_cols)}. 
+            f"""The following columns are missing from the results files: {', '.join(missing_cols)}. 
             Please rename the columns/rerun mBARq and try again. Skipping {result_file.name}""")
         return pd.DataFrame()
     df = df.rename({df.columns[0]: 'Name'}, axis=1)
     return df
 
+
 def app():
-    st.markdown(""" # Library Map
+    url = "https://doi.org/10.1186/s13059-014-0554-4"
+    st.markdown(f""" # Differential Gene Fitness
 
-    ### Write a little explanation of what this page shows.
+    ### Visualize gene log fold changes (LFCs) between two conditions of interest
 
-    - Required Inputs
-    - How to use the graph
+    - Statistical analysis is performed using [MAGeCK]({url}). MAGeCK uses a modified version of Robust Ranking Aggregation algorithm to identify negativly and positively selected genes.
+    
+    - :hourglass: To add KEGG annotation to the results, `emapper` annotation file must be provided 
 
+    - The central graph displays LFC for each gene ranked from lowest to highest, the size of the circle is inversely proportional to the FDR
+    
+    - The heatmaps show LFC for all the genes for a specific KEGG pathway for all the contrasts (comparisions)
+    
         """)
 
     with st.container():
@@ -39,8 +46,11 @@ def app():
             result_files = st.file_uploader('Upload library map file', accept_multiple_files=True)
         else:
             result_files = [Path("/Users/ansintsova/git_repos/mbarq_app/data/SL1344_test/library_10_1-unfiltered-results.kegg.csv")]
-            st.subheader('Example mapping file')
-            st.write(pd.read_csv(result_files[0], index_col=0).sample(5))
+            st.subheader('Example results file')
+            ex_df = (pd.read_csv(result_files[0], index_col=0)
+                     [['Name', 'num', 'neg|lfc', 'neg|score', 'neg|fdr', 'contrast']])
+            ex_df = ex_df[ex_df.contrast == 'd1'].sort_values('num', ascending=False)
+            st.write(ex_df.head(5))
         if len(result_files) < 1:
             st.stop()
 
