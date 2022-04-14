@@ -38,11 +38,22 @@ def find_PCs(countData, sampleData, numPCs=2, numGenes=None, choose_by='variance
     pDf = (pd.DataFrame(data=principalComponents, columns=pcs)
            .set_index(df.index))
     pc_var = {pcs[i]: round(pca.explained_variance_ratio_[i] * 100, 2) for i in range(0, numPCs)}
-    pDf2 = pDf.merge(sampleData, left_index=True, right_index=True)
+    pDf2 = pDf.merge(sampleData, how="left", left_index=True, right_index=True)
     return pDf2, pc_var
 
 
 def app():
+    # CSS to inject contained in a string
+    hide_dataframe_row_index = """
+                <style>
+                .row_heading.level0 {display:none}
+                .blank {display:none}
+                </style>
+                """
+
+    # Inject CSS with Markdown
+    st.markdown(hide_dataframe_row_index, unsafe_allow_html=True)
+
     st.markdown(""" # Exploratory Analysis
         
     ### Visualizing barcode count data.
@@ -56,7 +67,8 @@ def app():
     st.markdown("""
     - Takes in a **CSV** file containing sample data. First column must contain sample names that correspond to sample names in the count file. Example structure:
     """)
-    test = pd.DataFrame([['sample1', 'batch1', 'treatment'], ['sample2', 'batch2', 'control']], columns=['sampleID', 'batch', 'treatment'])
+    test = pd.DataFrame([['sample1', 'batch1', 'treatment'], ['sample2', 'batch2', 'control']],
+                        columns=['sampleID', 'batch', 'treatment'])
     st.dataframe(test)
     st.markdown("""
     
@@ -77,6 +89,7 @@ def app():
         else:
             cfile = "examples/example_mbarq_merged_counts.csv"
             mfile = "examples/example_sample_data.csv"
+
             c1, c2 = st.columns(2)
             c1.subheader('Example count file (sample)')
             ex_df = pd.read_csv(cfile)
@@ -85,7 +98,6 @@ def app():
             c1.write(ex_df[['barcode', 'Name'] + samples_to_show].dropna().head())
             c2.subheader('Example metadata file (sample)')
             c2.write(pd.read_csv(mfile, index_col=0).loc[samples_to_show].reset_index())
-
             c1.download_button(
                 label="Download example count data as CSV",
                 data=convert_df(ex_df),
@@ -101,22 +113,23 @@ def app():
         if not cfile or not mfile:
             st.stop()
 
-    # Requirements: first column has barcodes, second column has attributes in the countData, rest need to be sampleIDs.
-    # first column are sampleIDs column in the sampleData
+        # Requirements: first column has barcodes, second column has attributes in the countData, rest need to be sampleIDs.
+        # first column are sampleIDs column in the sampleData
         # Will only look at barcodes that were mapped to a feature / alternatively filter out low counts?
         df = pd.read_csv(cfile)
-        df = (df.rename({df.columns[0]: 'barcode'}, axis=1)
-              .dropna()
-              .drop([df.columns[1]], axis=1)
-              .drop_duplicates()
-              .set_index('barcode'))
+        countData = (df.rename({df.columns[0]: 'barcode'}, axis=1)
+                     .dropna()
+                     .drop([df.columns[1]], axis=1)
+                     .drop_duplicates()
+                     .set_index('barcode'))
         to_log = st.checkbox('Apply log2 transform (recommended)', value=True)
         if to_log:
-            countData = np.log2(df / df.sum() * 1000000 + 0.5)
+            countData = np.log2(countData / countData.sum() * 1000000 + 0.5)
         else:
-            countData = df / df.sum() * 1000000
+            countData = countData / countData.sum() * 1000000
         sampleData = pd.read_csv(mfile, index_col=0)
         sampleData.index.name = 'sampleID'
+
     st.write('## PCA plot')
     with st.expander('Show PCA'):
         c1, c2 = st.columns((4, 1))
@@ -159,16 +172,16 @@ def app():
 
     st.write('## Barcode Abundance')
     with st.expander('Show Barcode Abundance'):
-        df = pd.read_csv(cfile).dropna()
+        df = df.dropna()
         barcode = df.columns[0]
         gene_name = df.columns[1]
         df = df.set_index([barcode, gene_name])
         df = np.log2(df / df.sum() * 1000000 + 0.5)
+        sampleDataAb = sampleData.reset_index()
         df = df.reset_index()
-        sampleData = pd.read_csv(mfile)
         c1, c2 = st.columns(2)
-        compare_by = c1.selectbox('Compare by', sampleData.columns)
-        color_by = c2.selectbox('Color by', [barcode] + list(sampleData.columns))
+        compare_by = c1.selectbox('Compare by', sampleDataAb.columns)
+        color_by = c2.selectbox('Color by', [barcode] + list(sampleDataAb.columns))
         genes = st.multiselect("Choose gene(s) of interest", df[gene_name].unique())
 
         if not genes:
@@ -178,6 +191,7 @@ def app():
             gene_df = df[df[gene_name] == gene]
             gene_df = (gene_df.melt(id_vars=[barcode, gene_name], value_name='log2CPM', var_name='sampleID')
                        .merge(sampleData, how='left', on='sampleID'))
+            gene_df = gene_df.sort_values(compare_by)
             fig = px.strip(gene_df, title=gene, x=compare_by, y='log2CPM', color=color_by,
                            hover_data=[barcode] + list(sampleData.columns), stripmode='overlay')
             fig.update_layout({'paper_bgcolor': 'rgba(0,0,0,0)', 'plot_bgcolor': 'rgba(0,0,0,0)'}, autosize=True,

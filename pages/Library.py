@@ -91,10 +91,11 @@ def app():
         name_col = st.selectbox("Choose attribute column", attr_names)
         table1 = (map_df.groupby('library')
                   .agg({'barcode': ['nunique'], name_col: ['nunique'], 'distance_to_feature': [lambda x: sum(x != 0)],
-                        'multimap': ['sum']})
+                        'multimap': [lambda x: int(sum(x))]})
                   .reset_index())
         table1.columns = ["Library", '# of insertions', '# of genes with insertion',
                           '# of insertions outside of CDS', '# of barcodes mapped to multiple locations']
+
         table2 = (map_df.groupby(['library', name_col])
                   .barcode.count().reset_index().groupby('library')
                   .agg({'barcode': ['median', 'max']})
