@@ -82,7 +82,7 @@ def app():
 
     with st.container():
         st.subheader('Load your own data or browse the example data set')
-        data_type = st.radio('Choose dataset to show', ['Look at an example', 'Load my data'], index=1)
+        data_type = st.radio('Choose dataset to show', ['Look at an example', 'Load my data'], index=1, key='exp')
         if data_type == 'Load my data':
             cfile = st.file_uploader('Load merged count file')
             mfile = st.file_uploader('Load metadata')

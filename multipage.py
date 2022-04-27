@@ -7,8 +7,8 @@ through an object oriented framework.
 
 """
 
-
 import streamlit as st
+
 
 class MultiPage:
     """Framework for combining multiple streamlit applications."""
@@ -38,6 +38,5 @@ class MultiPage:
             self.pages,
             format_func=lambda page: page['title']
         )
-
-        # run the app function
+        # Run the app function
         page['function']()

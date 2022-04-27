@@ -42,7 +42,7 @@ def app():
 
     with st.container():
         st.subheader('Load your own data or browse the example data set')
-        data_type = st.radio('Choose dataset to show', ['Look at an example', 'Load my data'], index=1)
+        data_type = st.radio('Choose dataset to show', ['Look at an example', 'Load my data'], index=1, key='lib')
         if data_type == 'Load my data':
             map_files = st.file_uploader('Upload library map file', accept_multiple_files=True)
         else:
