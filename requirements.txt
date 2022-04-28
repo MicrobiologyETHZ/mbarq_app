@@ -1,10 +1,9 @@
-numpy == 1.19.2
+numpy >= 1.21
 pandas == 1.0.1
 plotly == 5.5.0
 scipy == 1.7.3
 streamlit == 1.4.0
 click==7.1.2
 scikit-learn
-jinja2==2.10.1
-escher==1.7.3
+
 
