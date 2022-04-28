@@ -4,7 +4,6 @@ import pandas as pd
 import numpy as np
 import plotly.express as px
 #from itertools import cycle
-import jinja2
 
 
 def process_library_results(result_file, file_type='mageck'):

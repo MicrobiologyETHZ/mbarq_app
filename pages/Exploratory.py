@@ -5,7 +5,7 @@ import numpy as np
 import plotly.express as px
 from itertools import cycle
 from pathlib import Path
-import jinja2
+
 
 @st.cache
 def convert_df(df):

@@ -1,5 +1,4 @@
 import streamlit as st
-import jinja2
 
 def app():
     url = "https://github.com/MicrobiologyETHZ/mbarq"
