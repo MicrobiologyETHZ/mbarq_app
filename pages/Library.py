@@ -2,7 +2,7 @@ import streamlit as st
 import pandas as pd
 from pathlib import Path
 import plotly.express as px
-
+import jinja2
 
 def process_library_map(uploaded_map):
     df = pd.read_csv(uploaded_map)

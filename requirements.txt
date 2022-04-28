@@ -5,5 +5,6 @@ scipy == 1.7.3
 streamlit == 1.4.0
 click==7.1.2
 scikit-learn
-escher==1.7.3
+jinja2
+#escher==1.7.3
 
