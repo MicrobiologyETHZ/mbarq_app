@@ -1,7 +1,7 @@
 import pandas as pd
 from pathlib import Path
 
-def proces_gmt(gmt_file, path_name=1):
+def process_gmt(gmt_file, path_name=1):
     genes = []
     paths = []
     with open(gmt_file, 'r', errors='ignore') as fh:
@@ -21,8 +21,8 @@ def merge_with_results(results_files, gmt_df, left_on):
 
 
 if __name__ == "__main__":
-    gmt_file = "/Users/ansintsova/git_repos/mbarq_app/data/SL1344_test/04-03-2022-SL1344-KEGG-API.gmt"
+    gmt_file = "/examples/04-03-2022-SL1344-KEGG-API.gmt"
     res_files = ["/Users/ansintsova/git_repos/mbarq_app/data/SL1344_test/library_10_1-unfiltered-results.csv"]
-    gmt_df = proces_gmt(gmt_file, path_name=2)
+    gmt_df = process_gmt(gmt_file, path_name=2)
 
     merge_with_results(res_files, gmt_df, left_on='id')
