@@ -1,15 +1,18 @@
 import streamlit as st
+import pathlib
 from pathlib import Path
 import pandas as pd
 import numpy as np
 import plotly.express as px
 from itertools import cycle
-
+import requests
+from time import sleep
+from io import StringIO
 
 def process_library_results(result_file, file_type='mageck'):
-    df = pd.read_csv(result_file, index_col=0)
+    df = pd.read_csv(result_file)
     if 'library' not in df.columns:
-        library_name = st.text_input("Add library name?", value='')
+        library_name = st.text_input("Add library name?", value=result_file.name)
         df['library'] = library_name
     fixed_col_names = {'mageck': ['library', 'LFC', 'neg_selection_fdr', 'pos_selection_fdr', 'contrast']}
     missing_cols = [c for c in fixed_col_names[file_type] if c not in df.columns]
@@ -22,7 +25,23 @@ def process_library_results(result_file, file_type='mageck'):
     return df
 
 
+@st.cache
+def convert_df(df):
+    return df.to_csv(index=False).encode('utf-8')
+
+@st.cache
 def process_gmt(gmt_file, identifier='Name', path_name=1):
+    genes = []
+    paths = []
+    gmt_lines = StringIO(gmt_file.getvalue().decode("utf-8")).read().split("\n")
+    for line in gmt_lines:
+        for gene in line.split('\t')[path_name:]:
+            genes.append(gene.strip("\n"))
+            paths.append(":".join(line.split('\t')[0:path_name]))
+    return pd.DataFrame([genes, paths], index=[identifier, 'KEGG_Pathway']).T
+
+
+def process_gmt_file(gmt_file, path_name=1):
     genes = []
     paths = []
     with open(gmt_file, 'r', errors='ignore') as fh:
@@ -30,7 +49,7 @@ def process_gmt(gmt_file, identifier='Name', path_name=1):
             for gene in line.split('\t')[path_name:]:
                 genes.append(gene.strip("\n"))
                 paths.append(":".join(line.split('\t')[0:path_name]))
-    return pd.DataFrame([genes, paths], index=[identifier, 'KEGG_Pathway']).T
+    return pd.DataFrame([genes, paths], index=['Name', 'KEGG_Pathway']).T
 
 
 def app():
@@ -51,16 +70,17 @@ def app():
 
     with st.container():
         st.subheader('Browse an example data set')
-        data_type = st.radio('Choose dataset to show', ['Look at an example'], index=0)
+        data_type = st.radio('Choose dataset to show', ['Load my data', 'Look at an example'], index=0)
         if data_type == 'Load my data':
             result_files = st.file_uploader('Upload results file', accept_multiple_files=True)
             gmt_file = st.file_uploader('Upload gmt file')
+            identifier = st.text_input('Gene attribute used in the result files', value='Name')
         else:
             result_files = [Path("examples/example_rra_results.csv")]
             gmt_file = Path("examples/04-03-2022-SL1344-KEGG-API.gmt")
             identifier = 'Name'
             st.subheader('Example results file')
-            ex_df = (pd.read_csv(result_files[0], index_col=0))
+            ex_df = (pd.read_csv(result_files[0]))
             ex_df = ex_df[ex_df.contrast == 'd1'].sort_values('number_of_barcodes', ascending=False)
             st.write(ex_df.head(5))
         if len(result_files) < 1:
@@ -73,29 +93,34 @@ def app():
             result_dfs.append(df)
         fdf = pd.concat(result_dfs)
         if gmt_file:
-            gmt_df = process_gmt(gmt_file, identifier, path_name=2)
+            if type(gmt_file) is pathlib.PosixPath:
+                gmt_df = process_gmt_file(gmt_file, path_name=2)
+            else:
+                gmt_df = process_gmt(gmt_file, identifier, path_name=2)
             fdf = fdf.merge(gmt_df, how='left', on=identifier)
         else:
             if "KEGG_Pathway" not in list(fdf.columns):
                 fdf['KEGG_Pathway'] = np.nan
-
+        fdf['fdr'] = np.where(fdf['LFC'] < 0, fdf['neg_selection_fdr'], fdf['pos_selection_fdr'])
+        fdf['log10FDR'] = -10 * np.log10(fdf['fdr'])
+        contrasts = fdf['contrast'].sort_values().unique()
+        libraries = fdf['library'].unique()
 
     st.subheader("Results by log fold change")
     with st.expander('LFC rankings'):
-        fdf['fdr'] = np.where(fdf['LFC'] < 0, fdf['neg_selection_fdr'], fdf['pos_selection_fdr'])
-        fdf['log10FDR'] = -10*np.log10(fdf['fdr'])
-        contrasts = fdf['contrast'].sort_values().unique()
-        contrast_col, lfc_col, fdr_col = st.columns(3)
+
+        contrast_col, lfc_col, fdr_col, lfc_lib_col = st.columns(4)
         contrast_to_show = contrast_col.selectbox('Select a contrast', contrasts)
+        library_to_show = lfc_lib_col.selectbox('Select library to show', libraries)
         fdr = fdr_col.number_input('FDR cutoff', value=0.05)
         lfc_th = lfc_col.number_input('Log FC cutoff (absolute)', min_value=0.0, step=0.5, value=1.0)
-        df = fdf[fdf.contrast == contrast_to_show].copy()
+        df = fdf[(fdf.contrast == contrast_to_show) & (fdf.library == library_to_show)].copy()
         df['hit'] = ((abs(df['LFC']) > lfc_th) & (df['fdr'] < fdr))
         show_kegg = st.selectbox('Show KEGG Pathway', ['All'] + list(df.KEGG_Pathway.unique()))
         if show_kegg != 'All':
             df = df[df.KEGG_Pathway == show_kegg]
         df = df.sort_values('LFC').reset_index().reset_index().rename({'level_0': 'ranking'}, axis=1)
-        fig = px.scatter(df, x='ranking', y='LFC', color='hit', size='log10FDR',
+        fig = px.scatter(df, x='ranking', y='LFC', color='hit',
                          height=700,
                          color_discrete_map={
                              True: clrs[1],
@@ -110,10 +135,10 @@ def app():
                          )
         fig.add_hline(y=0, line_width=2, line_dash="dash", line_color="grey")
         fig.update_xaxes(showticklabels=False)
-        fig.update_layout( {'paper_bgcolor': 'rgba(0,0,0,0)', 'plot_bgcolor': 'rgba(0,0,0,0)'}, autosize=True,
+        fig.update_layout({'paper_bgcolor': 'rgba(0,0,0,0)', 'plot_bgcolor': 'rgba(0,0,0,0)'}, autosize=True,
                           font=dict(size=18))
-        fig.update_traces(marker=dict(
-                                      line=dict(width=1,
+        fig.update_traces(marker=dict(size=14,
+                                      line=dict(width=2,
                                                 color='DarkSlateGrey')),
                           selector=dict(mode='markers'))
         st.plotly_chart(fig, use_container_width=True)
@@ -126,13 +151,15 @@ def app():
         if not show_kegg_heat1:
             st.markdown('No KEGG Annotation found :thinking_face:')
         else:
-            heatDfLeft = fdf[fdf.KEGG_Pathway == show_kegg_heat1][['Name', 'LFC', 'contrast']].pivot(index="Name",
-                                                                                                     columns='contrast',
-                                                                                                     values='LFC')
-            heatDfRight = fdf[fdf.KEGG_Pathway == show_kegg_heat2][['Name', 'LFC', 'contrast']].pivot(index="Name",
-                                                                                                     columns='contrast',
-                                                                                                    values='LFC')
+            heatDfLeft = (fdf[fdf.KEGG_Pathway == show_kegg_heat1][['Name', 'LFC', 'contrast', 'library']]
+                          .groupby(['contrast', 'Name']).LFC.median().reset_index())
+            heatDfLeft.columns = ['contrast', 'Name', 'LFC']
+            heatDfLeft = heatDfLeft.pivot(index="Name", columns='contrast', values='LFC')
 
+            heatDfRight = (fdf[fdf.KEGG_Pathway == show_kegg_heat2][['Name', 'LFC', 'contrast', 'library']]
+                          .groupby(['contrast', 'Name']).LFC.mean().reset_index())
+            heatDfRight.columns = ['contrast', 'Name', 'LFC']
+            heatDfRight = heatDfRight.pivot(index="Name", columns='contrast', values='LFC')
             fig2 = px.imshow(heatDfLeft, color_continuous_scale=px.colors.sequential.RdBu_r, color_continuous_midpoint=0,
                                  width=600, height=900)
             fig3 = px.imshow(heatDfRight, color_continuous_scale=px.colors.sequential.RdBu_r, color_continuous_midpoint=0,
@@ -140,9 +167,15 @@ def app():
             c1.plotly_chart(fig2, use_container_width=False)
             c2.plotly_chart(fig3, use_container_width=False)
 
-    st.subheader("Browse results as a table")
+    st.subheader("Protein-protein interactions")
     with st.expander('Tabular Results'):
-        compContrasts = st.multiselect('Select contrasts to display', contrasts)
+        contCol, libCol = st.columns(2)
+        compContrasts = contCol.multiselect('Select contrasts to display', contrasts)
+        libs = libCol.multiselect('Select libraries to display', ['All'] + list(libraries), default='All')
+        if 'All' in libs:
+            vennDf = fdf.copy()
+        else:
+            vennDf = fdf[fdf.library.isin(libs)].copy()
         if not compContrasts:
             st.write("No contrast selected")
         else:
@@ -150,23 +183,48 @@ def app():
             filters = {}
             for col, contrast in zip(cycle([c1, c2]), compContrasts):
                col.write(contrast)
-               l = col.number_input('LFC cutoff', value=-1.0, step=0.5, key=f'{contrast}_lfc')
+               l = col.number_input('LFC cutoff', value=-5.0, step=0.5, key=f'{contrast}_lfc')
                f = col.number_input('FDR cutoff', value=0.05, step=0.01,  key=f'{contrast}_fdr')
                filters[contrast] = (l, f)
-
             comp_genes = []
             for key, value in filters.items():
                 if value[0] > 0:
-                    genes = set(fdf[(fdf.contrast == key) & (fdf['LFC'] > value[0]) & (fdf.fdr < value[1])][identifier].values)
+                    genes = set(vennDf[(vennDf.contrast == key) & (vennDf['LFC'] > value[0]) & (vennDf.fdr < value[1])][identifier].values)
                 else:
-                    genes = set(fdf[(fdf.contrast == key) & (fdf['LFC'] < value[0]) & (fdf.fdr < value[1])][identifier].values)
+                    genes = set(vennDf[(vennDf.contrast == key) & (vennDf['LFC'] < value[0]) & (vennDf.fdr < value[1])][identifier].values)
                 comp_genes.append(genes)
             intersect_genes = set.intersection(*comp_genes)
-            vennDf = fdf[fdf[identifier].isin(intersect_genes)].copy()
+            vennDf = vennDf[vennDf[identifier].isin(intersect_genes)].copy()
             vennDf = vennDf[[identifier, 'library', 'LFC', 'fdr', 'contrast']].drop_duplicates()
-            vennDf2 = vennDf.pivot(index='Name', columns='contrast', values=['LFC', 'fdr'])
-            st.write(vennDf2)
+            #vennDf2 = vennDf.pivot(index='Name', columns='contrast', values=['LFC', 'fdr'])
+            st.write(vennDf)
 
+            string_col, download_col = st.columns(2)
+
+            string_api_url = "https://version-11-5.string-db.org/api"
+            output_format = 'tsv-no-header'
+            method = 'get_link'
+            my_genes = set(vennDf[identifier].values)
+            request_url = "/".join([string_api_url, output_format, method])
+            string_col.markdown("### STRING Interaction Network")
+            species = string_col.number_input("NCBI species taxid", value=99287, help='Salmonella Typhimurium: 99287')
+
+            params = {
+                "identifiers": "\r".join(my_genes),  # your protein
+                "species": species,  # species NCBI identifier
+                "network_flavor": "confidence",  # show confidence links
+                "caller_identity": "mbarq"  # your app name
+            }
+
+            if string_col.button('Get STRING network'):
+                results = requests.post(request_url, data=params)
+                network_url = results.text.strip()
+                st.markdown(f"[Link to STRING network]({network_url})")
+                sleep(1)
+            download_col.markdown("### Download Files as csv")
+            fname = download_col.text_input("File name", value="mbarq_results")
+            fname = fname+".csv"
+            download_col.download_button("Download data as csv file", convert_df(vennDf), file_name=fname)
 
     st.subheader("Gene Selector")
     with st.expander('Gene Selector'):
@@ -179,11 +237,12 @@ def app():
             gene_df = fdf[fdf[identifier] == gene].copy()
             gene_df = gene_df[[identifier, 'library', 'contrast', 'LFC', 'fdr']].drop_duplicates()
             gene_df = gene_df.sort_values('contrast')
-            fig = px.strip(gene_df, title=gene, x="contrast", y='LFC',
+            fig = px.strip(gene_df, title=gene, x="contrast", y='LFC', color='library',
                            hover_data=[identifier,"library", "contrast", "fdr"], stripmode='overlay')
             fig.update_layout({'paper_bgcolor': 'rgba(0,0,0,0)', 'plot_bgcolor': 'rgba(0,0,0,0)'}, autosize=True,
                               font=dict(size=16))
             fig.update_yaxes(showgrid=True, gridwidth=0.5, gridcolor='LightGrey')
+            fig.add_hline(y=0, line_width=2, line_dash="dash", line_color="grey")
             col.plotly_chart(fig, use_container_width=True)
 
 

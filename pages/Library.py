@@ -90,12 +90,15 @@ def app():
     with st.container():
         name_col = st.selectbox("Choose attribute column", attr_names)
         table1 = (map_df.groupby('library')
-                  .agg({'barcode': ['nunique'], name_col: ['nunique'], 'distance_to_feature': [lambda x: sum(x != 0)],
+                  .agg({'barcode': ['nunique'],  'distance_to_feature': [lambda x: sum(x != 0)],
                         'multimap': [lambda x: int(sum(x))]})
                   .reset_index())
-        table1.columns = ["Library", '# of insertions', '# of genes with insertion',
-                          '# of insertions outside of CDS', '# of barcodes mapped to multiple locations']
-
+        table1.columns = ["Library", '# of insertions', '# of insertions outside of CDS',
+                          '# of barcodes mapped to multiple locations']
+        table1 = table1.set_index('Library')
+        table1['# of gene with insertion'] = (map_df[map_df.distance_to_feature == 0]
+                                              .groupby('library')[name_col].nunique())
+        # # table1['Library'] = table1.Library.str.replace("_", '-')
         table2 = (map_df.groupby(['library', name_col])
                   .barcode.count().reset_index().groupby('library')
                   .agg({'barcode': ['median', 'max']})
