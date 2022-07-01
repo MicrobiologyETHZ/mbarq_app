@@ -60,8 +60,8 @@ def app():
 
     - Statistical analysis is performed using [MAGeCK]({url}). MAGeCK uses a modified version of Robust Ranking Aggregation algorithm to identify negativly and positively selected genes.
     
-    - :hourglass: To add KEGG annotation to the results, `emapper` annotation file must be provided 
-
+    - `gmt` file is needed to add pathway visualization
+    
     - The central graph displays LFC for each gene ranked from lowest to highest, the size of the circle is inversely proportional to the FDR
     
     - The heatmaps show LFC for all the genes for a specific KEGG pathway for all the contrasts (comparisions)
@@ -245,4 +245,4 @@ def app():
             fig.add_hline(y=0, line_width=2, line_dash="dash", line_color="grey")
             col.plotly_chart(fig, use_container_width=True)
 
-
+app()

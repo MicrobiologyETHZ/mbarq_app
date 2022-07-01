@@ -2,22 +2,22 @@ import streamlit as st
 import pandas as pd
 from pathlib import Path
 import plotly.express as px
-
+st.set_page_config(page_title="Library Map", layout='wide')
 
 def process_library_map(uploaded_map):
     df = pd.read_csv(uploaded_map)
     if 'library' not in df.columns:
         library_name = st.text_input("Change library name?", value=uploaded_map.name)
         df['library'] = library_name
-    fixed_col_names = ['barcode', 'number_of_reads', 'insertion_site', 'chr',
-                       'multimap', 'distance_to_feature', 'strand', 'library']
+    fixed_col_names = ['barcode', 'number_of_reads', 'insertion_site',
+                       'chr', 'distance_to_feature', 'strand', 'library']
     missing_cols = [c for c in fixed_col_names if c not in df.columns]
     attr_names = [c for c in df.columns if c not in fixed_col_names]
     if len(missing_cols) > 0:
         st.markdown(
-            f"""The following columns are missing from the map files: {', '.join(missing_cols)}. 
-            Please rename the columns/rerun mBARq and try again. Skipping {uploaded_map.name}""")
-        return pd.DataFrame()
+            f"""⚠️ The following columns are missing from the map files: {', '.join(missing_cols)}. 
+            Please rename the columns/rerun mBARq and try again. Skipping {uploaded_map.name} ⚠️""")
+        st.stop()
     df['in CDS'] = df.distance_to_feature == 0
     df = df.fillna('NaN')  # todo check if this does anything, shouldn't
     return df, attr_names
@@ -70,31 +70,42 @@ def app():
 
     with st.container():
         chr_col = 'chr'
-        color_by_cols = ['in CDS', 'multimap', 'library']
+        color_by_cols = ['in CDS', 'library']
         attr_names = set(attr_names)
+
+        graph_type = st.radio("Choose graph", ['Coverage Histogram', 'Individual Insertions'])
+
         c1, c2 = st.columns(2)
         seqid = c1.selectbox('Choose sequence to display', map_df[chr_col].unique())
-        colorby = c2.selectbox('Color by', color_by_cols)
+
         df_to_show = map_df[map_df[chr_col] == seqid].sort_values("insertion_site")
-        fig = px.scatter(df_to_show, x='insertion_site', y='number_of_reads', color=colorby, log_y=True, height=600,
-                         hover_data=attr_names,
-                         labels={'insertion_site': 'Position, bp', 'number_of_reads': 'Read Counts'})
-        fig.update_layout({'paper_bgcolor': 'rgba(0,0,0,0)', 'plot_bgcolor': 'rgba(0,0,0,0)'}, autosize=True,
-                          font=dict(size=18))
-        fig.update_traces(marker=dict(size=6,
-                                      line=dict(width=2,
-                                                color='DarkSlateGrey')),
-                          selector=dict(mode='markers'))
-        st.plotly_chart(fig, use_container_width=True)
+
+        if graph_type == 'Individual Insertions':
+            colorby = c2.selectbox('Color by', color_by_cols)
+            fig = px.scatter(df_to_show, x='insertion_site', y='number_of_reads', color=colorby, log_y=True, height=600,
+                             hover_data=attr_names,
+                             labels={'insertion_site': 'Position, bp', 'number_of_reads': 'Read Counts'})
+            fig.update_layout({'paper_bgcolor': 'rgba(0,0,0,0)', 'plot_bgcolor': 'rgba(0,0,0,0)'}, autosize=True,
+                              font=dict(size=18))
+            fig.update_traces(marker=dict(size=6,
+                                          line=dict(width=2,
+                                                    color='DarkSlateGrey')),
+                              selector=dict(mode='markers'))
+            st.plotly_chart(fig, use_container_width=True)
+        elif graph_type == 'Coverage Histogram':
+            num_bins = c2.number_input('Number of bins', value=100)
+            fig = px.histogram(df_to_show, x='insertion_site', nbins=int(num_bins),
+                               labels={'insertion_site': 'Position, bp'})
+            fig.update_layout({'paper_bgcolor': 'rgba(0,0,0,0)', 'plot_bgcolor': 'rgba(0,0,0,0)'}, autosize=True,
+                              font=dict(size=18), bargap=0.1)
+            st.plotly_chart(fig, use_container_width=True)
 
     with st.container():
         name_col = st.selectbox("Choose attribute column", attr_names)
         table1 = (map_df.groupby('library')
-                  .agg({'barcode': ['nunique'],  'distance_to_feature': [lambda x: sum(x != 0)],
-                        'multimap': [lambda x: int(sum(x))]})
+                  .agg({'barcode': ['nunique'],  'distance_to_feature': [lambda x: sum(x != 0)]})
                   .reset_index())
-        table1.columns = ["Library", '# of insertions', '# of insertions outside of CDS',
-                          '# of barcodes mapped to multiple locations']
+        table1.columns = ["Library", '# of insertions', '# of insertions outside of CDS']
         table1 = table1.set_index('Library')
         table1['# of gene with insertion'] = (map_df[map_df.distance_to_feature == 0]
                                               .groupby('library')[name_col].nunique())
@@ -108,3 +119,4 @@ def app():
         st.table(table1)
         st.markdown("### Table 2: Insertions per gene ")
         st.dataframe(table2)
+app()

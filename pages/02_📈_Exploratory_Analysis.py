@@ -180,21 +180,46 @@ def app():
         sampleDataAb = sampleData.reset_index()
         df = df.reset_index()
         c1, c2 = st.columns(2)
-        compare_by = c1.selectbox('Compare by', sampleDataAb.columns)
-        color_by = c2.selectbox('Color by', [barcode] + list(sampleDataAb.columns))
+        compare_by = c1.selectbox('Compare across', sampleDataAb.columns)
+        categories = st.multiselect(f'Categories of {compare_by} to display', ['All'] + list(sampleDataAb[compare_by].unique()))
+        if 'All' in categories:
+            categories = list(sampleDataAb[compare_by].unique())
+        #color_by = c2.selectbox('Color by', [barcode, gene_name] + list(sampleDataAb.columns))
         genes = st.multiselect("Choose gene(s) of interest", df[gene_name].unique())
 
-        if not genes:
+        if len(genes) * len(categories) > 40:
+            st.write('Too many genes/categories to display, consider choosing fewer genes')
             st.stop()
-        c3, c4 = st.columns(2)
-        for col, gene in zip(cycle([c3, c4]), genes):
-            gene_df = df[df[gene_name] == gene]
-            gene_df = (gene_df.melt(id_vars=[barcode, gene_name], value_name='log2CPM', var_name='sampleID')
-                       .merge(sampleData, how='left', on='sampleID'))
-            gene_df = gene_df.sort_values(compare_by)
-            fig = px.strip(gene_df, title=gene, x=compare_by, y='log2CPM', color=color_by,
-                           hover_data=[barcode] + list(sampleData.columns), stripmode='overlay')
-            fig.update_layout({'paper_bgcolor': 'rgba(0,0,0,0)', 'plot_bgcolor': 'rgba(0,0,0,0)'}, autosize=True,
+
+        gene_df = df[df[gene_name].isin(genes)]
+        sample_df = sampleDataAb[sampleDataAb[compare_by].isin(categories)]
+        gene_df2 = (gene_df.melt(id_vars=[barcode, gene_name], value_name='log2CPM', var_name='sampleID')
+                           .merge(sample_df, how='inner', on='sampleID'))
+        groupby = st.radio('Group by', [gene_name, compare_by])
+        color_by = [c for c in [gene_name, compare_by] if c != groupby][0]
+
+        fig = px.box(gene_df2,  x=groupby, y='log2CPM', color=color_by,
+                     hover_data=[barcode, gene_name] + list(sampleData.columns), points='all')
+
+        fig.update_layout({'paper_bgcolor': 'rgba(0,0,0,0)', 'plot_bgcolor': 'rgba(0,0,0,0)'}, autosize=True,
                               font=dict(size=16))
-            fig.update_yaxes(showgrid=True, gridwidth=0.5, gridcolor='LightGrey')
-            col.plotly_chart(fig, use_container_width=True)
+        fig.update_yaxes(showgrid=True, gridwidth=0.5, gridcolor='LightGrey')
+        st.plotly_chart(fig, use_container_width=True)
+
+
+        # if not genes:
+        #     st.stop()
+        # c3, c4 = st.columns(2)
+        # for col, gene in zip(cycle([c3, c4]), genes):
+        #     gene_df = df[df[gene_name] == gene]
+        #     gene_df = (gene_df.melt(id_vars=[barcode, gene_name], value_name='log2CPM', var_name='sampleID')
+        #                .merge(sampleData, how='left', on='sampleID'))
+        #     gene_df = gene_df.sort_values(compare_by)
+        #     fig = px.strip(gene_df, title=gene, x=compare_by, y='log2CPM', color=color_by,
+        #                    hover_data=[barcode] + list(sampleData.columns), stripmode='overlay')
+        #     fig.update_layout({'paper_bgcolor': 'rgba(0,0,0,0)', 'plot_bgcolor': 'rgba(0,0,0,0)'}, autosize=True,
+        #                       font=dict(size=16))
+        #     fig.update_yaxes(showgrid=True, gridwidth=0.5, gridcolor='LightGrey')
+        #     col.plotly_chart(fig, use_container_width=True)
+
+app()
