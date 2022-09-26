@@ -121,35 +121,38 @@ def app():
     st.subheader("Pathway Heatmaps")
     with st.expander('Show LFC Heatmaps'):
         c1, c2 = st.columns(2)
-        show_kegg_heat1 = c1.selectbox('Show KEGG Pathway', list(fdf.KEGG_Pathway.dropna().unique()), key='leftKegg')
-        show_genes = c2.multiselect("Choose gene(s) of interest", fdf[identifier].unique())
-        if not show_kegg_heat1:
-            st.markdown('No KEGG Annotation found :thinking_face:')
-        else:
-            heatDfLeft = (fdf[fdf.KEGG_Pathway == show_kegg_heat1][['Name', 'LFC', 'contrast', 'library']]
-                          .groupby(['contrast', 'Name']).LFC.median().reset_index())
-            heatDfLeft.columns = ['contrast', 'Name', 'LFC']
-            heatDfLeft = heatDfLeft.pivot(index="Name", columns='contrast', values='LFC')
+        heat_by = st.radio('Show heatmap by:', ('Genes of Interest', 'KEGG Pathway'))
+        if heat_by == 'KEGG Pathway':
+            show_kegg_heat1 = st.selectbox('Show KEGG Pathway', list(fdf.KEGG_Pathway.dropna().unique()), key='leftKegg')
+            if not show_kegg_heat1:
+                st.markdown('No KEGG Annotation found :thinking_face:')
+            else:
+                heatDfLeft = (fdf[fdf.KEGG_Pathway == show_kegg_heat1][['Name', 'LFC', 'contrast', 'library']]
+                              .groupby(['contrast', 'Name']).LFC.median().reset_index())
+                heatDfLeft.columns = ['contrast', 'Name', 'LFC']
+                heatDfLeft = heatDfLeft.pivot(index="Name", columns='contrast', values='LFC')
 
-            fig2 = px.imshow(heatDfLeft, color_continuous_scale=px.colors.diverging.Geyser,
-                             color_continuous_midpoint=0,
-                             width=600, height=900)
-            fig2.update_layout({'paper_bgcolor': 'rgba(0,0,0,0)', 'plot_bgcolor': 'rgba(0,0,0,0)'}, autosize=True,
-                              font=dict(size=22))
-
-
-            c1.plotly_chart(fig2, use_container_width=False)
-
-        heatDfRight = (fdf[fdf[identifier].isin(show_genes)][['Name', 'LFC', 'contrast', 'library']]
-                       .groupby(['contrast', 'Name']).LFC.mean().reset_index())
-        heatDfRight.columns = ['contrast', 'Name', 'LFC']
-        heatDfRight = heatDfRight.pivot(index="Name", columns='contrast', values='LFC')
-        fig3 = px.imshow(heatDfRight, color_continuous_scale=px.colors.diverging.Geyser,
-                         color_continuous_midpoint=0,
-                         width=600, height=900)
-        fig3.update_layout({'paper_bgcolor': 'rgba(0,0,0,0)', 'plot_bgcolor': 'rgba(0,0,0,0)'}, autosize=True,
-                           font=dict(size=22))
-        c2.plotly_chart(fig3, use_container_width=False)
+                fig2 = px.imshow(heatDfLeft, color_continuous_scale=px.colors.diverging.Geyser,
+                                 color_continuous_midpoint=0,
+                                 width=600, height=900)
+                fig2.update_layout({'paper_bgcolor': 'rgba(0,0,0,0)', 'plot_bgcolor': 'rgba(0,0,0,0)'}, autosize=True,
+                                   font=dict(size=22))
+                st.plotly_chart(fig2, use_container_width=True)
+        elif heat_by == 'Genes of Interest':
+            show_genes = st.multiselect("Choose gene(s) of interest", fdf[identifier].unique())
+            if not show_genes:
+                st.markdown("No genes selected :thinking_face:")
+            else:
+                heatDfRight = (fdf[fdf[identifier].isin(show_genes)][['Name', 'LFC', 'contrast', 'library']]
+                               .groupby(['contrast', 'Name']).LFC.mean().reset_index())
+                heatDfRight.columns = ['contrast', 'Name', 'LFC']
+                heatDfRight = heatDfRight.pivot(index="Name", columns='contrast', values='LFC')
+                fig2 = px.imshow(heatDfRight, color_continuous_scale=px.colors.diverging.Geyser,
+                                 color_continuous_midpoint=0,
+                                 width=600, height=900)
+                fig2.update_layout({'paper_bgcolor': 'rgba(0,0,0,0)', 'plot_bgcolor': 'rgba(0,0,0,0)'}, autosize=True,
+                                   font=dict(size=22))
+                st.plotly_chart(fig2, use_container_width=True)
 
 
     # st.subheader("Protein-protein interactions")

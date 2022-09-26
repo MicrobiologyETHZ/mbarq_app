@@ -71,6 +71,7 @@ def graph_library_map(map_df, attr_names, chr_col='chr', color_by_cols=('in CDS'
 
     elif graph_type == 'Coverage Histogram':
         num_bins = c2.number_input('Number of bins', value=100)
+        st.write(int(num_bins))
         fig = px.histogram(df_to_show, x='insertion_site', nbins=int(num_bins),
                            labels={'insertion_site': 'Position, bp'}, color_discrete_sequence=[colors['teal']])
         fig.update_layout(bargap=0.1)
@@ -132,8 +133,8 @@ def pca_figure(countData, sampleData, choose_by='variance', layout=(3,1)):
     _, aC, all_clrs = define_color_scheme()
     c1, c2 = st.columns(layout)
     c2.write('### PCA Options')
-    numPCs = c2.slider("Select number of Principal Components", min_value=2, max_value=50, value=10)
-    numGenes = c2.slider("Number of genes to use", value=250, max_value=countData.shape[0])
+    numPCs = c2.number_input("Select number of Principal Components", min_value=2, max_value=50, value=10)
+    numGenes = c2.number_input("Number of genes to use", min_value=2, value=250, max_value=countData.shape[0])
     pDf, pc_var = find_PCs(countData, sampleData, numPCs, numGenes, choose_by)
     missing_meta = " ,".join(list(pDf[pDf.isna().any(axis=1)].index))
     st.write(f"The following samples have missing_metadata and will not be shown: {missing_meta}")
@@ -149,11 +150,12 @@ def pca_figure(countData, sampleData, choose_by='variance', layout=(3,1)):
                      labels={pcX: f'{pcX}, {pc_var[pcX]} % Variance',
                              pcY: f'{pcY}, {pc_var[pcY]} % Variance'},
                      color_discrete_sequence=all_clrs,
+                     template='plotly_white',
                      height=800, hover_data=expVars, hover_name=pDf.index)
     fig.update_layout({'paper_bgcolor': 'rgba(0,0,0,0)', 'plot_bgcolor': 'rgba(0,0,0,0)'},
                       autosize=True,
-                      font=dict(size=24))
-    fig.update_traces(marker=dict(size=18,
+                      font=dict(size=30))
+    fig.update_traces(marker=dict(size=24,
                                   line=dict(width=2,
                                             color='DarkSlateGrey'), opacity=0.9),
                       selector=dict(mode='markers'))
