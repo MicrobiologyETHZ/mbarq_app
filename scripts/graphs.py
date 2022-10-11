@@ -199,7 +199,8 @@ def show_lfc_ranking(fdf, contrasts, libraries):
                      hover_data={'LFC': True,
                                  'log10FDR': False,
                                  'ranking': False,
-                                 'fdr': True},
+                                 'fdr': True,
+                                 'KEGG_Pathway': True},
                      labels={"ranking": '', 'LFC': 'Log2 FC'}
                      )
     fig.add_hline(y=0, line_width=2, line_dash="dash", line_color="grey")
