@@ -243,3 +243,54 @@ def link_to_string(hits_df, st_col, lfc_col='LFC', gene_name='Name'):
         network_url = network.text.strip()
         st_col.markdown(f"[Link to STRING network]({network_url})")
         sleep(1)
+
+
+def plot_rank(rank_df, colors, hover_dict):
+    fig = px.scatter(rank_df, x='ranking', y='LFC', color='hit', symbol='contrast',
+                     height=800,
+                     color_discrete_map={
+                         True: colors['teal'],
+                         False: colors['grey']},
+                     hover_name='Name',
+
+                     hover_data=hover_dict,
+                     labels={"ranking": '', 'LFC': 'Log2 FC'}
+                     )
+    fig.add_hline(y=0, line_width=2, line_dash="dash", line_color="grey")
+    fig.update_xaxes(showticklabels=False)
+    fig.update_layout({'paper_bgcolor': 'rgba(0,0,0,0)', 'plot_bgcolor': 'rgba(0,0,0,0)'}, autosize=True,
+                      font=dict(size=18))
+    fig.update_traces(marker=dict(size=14,
+                                  line=dict(width=1,
+                                            color='DarkSlateGrey'), opacity=0.8),
+                      selector=dict(mode='markers'))
+    return fig
+
+
+def plot_position(position_df, colors, hover_dict):
+    fig = px.scatter(position_df, x='Start', y='mean_LFC', color='contrast', size='number of libraries', symbol='hit',
+                     height=800,
+                     color_discrete_sequence=px.colors.qualitative.D3,
+                     hover_name='Name',
+                     hover_data=hover_dict,
+                     labels={"ranking": '', 'LFC': 'Log2 FC'}
+                     )
+    fig.add_hline(y=0, line_width=2, line_dash="dash", line_color="grey")
+
+    fig.update_layout({'paper_bgcolor': 'rgba(0,0,0,0)', 'plot_bgcolor': 'rgba(0,0,0,0)'}, autosize=True,
+                      font=dict(size=18))
+    fig.update_traces(marker=dict(
+        line=dict(width=1,
+                  color='DarkSlateGrey'), opacity=0.8),
+        selector=dict(mode='markers'))
+    return fig
+
+
+def plot_heatmap(heatDf):
+    fig = px.imshow(heatDf, color_continuous_scale=px.colors.diverging.Geyser,
+                     color_continuous_midpoint=0,
+
+                     width=1000, height=900)
+    fig.update_layout({'paper_bgcolor': 'rgba(0,0,0,0)', 'plot_bgcolor': 'rgba(0,0,0,0)'}, autosize=True,
+                       font=dict(size=10))
+    return fig

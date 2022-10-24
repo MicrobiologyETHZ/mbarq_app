@@ -1,6 +1,6 @@
 import streamlit as st
 from PIL import Image
-from scripts import library_map, eda, dea
+from scripts import library_map, eda, dea, results
 
 st.set_page_config(page_title="mBARq App", layout='wide',
                    page_icon=Image.open("images/image.png")
@@ -54,4 +54,4 @@ with eda_tab:
     eda.app()
 
 with dea_tab:
-    dea.app()
+    results.app()

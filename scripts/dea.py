@@ -9,6 +9,7 @@ import requests
 from time import sleep
 from io import StringIO
 
+
 from scripts.graphs import show_lfc_ranking, link_to_string, define_color_scheme
 
 
@@ -61,6 +62,7 @@ def subset_results(fdf, identifier,  contrast_to_show, library_to_show, fdr_th, 
     if library_to_show == 'All':
         df = df[(df.contrast == contrast_to_show)]
     else:
+        st.write(library_to_show)
         df = df[(df.contrast == contrast_to_show) & (df.library == library_to_show)]
     df['hit'] = ((abs(df['LFC']) > lfc_th) & (df['fdr'] < fdr_th))
     lib_df = fdf[fdf.library == library_to_show].copy() if library_to_show != 'All' else fdf.copy()
@@ -89,6 +91,7 @@ def connect_to_string(hits_df, gene_name=''):
 
 
 def app():
+
     colors, alphabetClrs, all_clrs = define_color_scheme()
     url = "https://doi.org/10.1186/s13059-014-0554-4"
     st.markdown(f""" # Differential Gene Fitness""")
@@ -122,23 +125,27 @@ def app():
             ex_df = ex_df[ex_df.contrast == 'd1'].sort_values('number_of_barcodes', ascending=False)
             st.write(ex_df.head(5))
         if len(result_files) < 1:
-            st.stop()
-        result_dfs = []
-        for uploaded_result in result_files:
-            st.write(f"Processing {uploaded_result.name}")
-            df = process_library_results(uploaded_result)
-            result_dfs.append(df)
-        fdf = pd.concat(result_dfs)
-        if gmt_file:
-            if type(gmt_file) is pathlib.PosixPath:
-                gmt_df = process_gmt_file(gmt_file, path_name=2)
-            else:
-                gmt_df = process_gmt(gmt_file, identifier, path_name=2)
-            fdf = fdf.merge(gmt_df, how='left', on=identifier)
+            st.write("No files")
+            #st.stop()
         else:
-            if "KEGG_Pathway" not in list(fdf.columns):
-                fdf['KEGG_Pathway'] = np.nan
+            result_dfs = []
+            for uploaded_result in result_files:
+                st.write(f"Processing {uploaded_result.name}")
+                df = process_library_results(uploaded_result)
+                result_dfs.append(df)
+            fdf = pd.concat(result_dfs)
+            if gmt_file:
+                if type(gmt_file) is pathlib.PosixPath:
+                    gmt_df = process_gmt_file(gmt_file, path_name=2)
+                else:
+                    gmt_df = process_gmt(gmt_file, identifier, path_name=2)
+                fdf = fdf.merge(gmt_df, how='left', on=identifier)
+            else:
+                if "KEGG_Pathway" not in list(fdf.columns):
+                    fdf['KEGG_Pathway'] = np.nan
 
+
+        st.write(fdf.head())
         fdf['fdr'] = np.where(fdf['LFC'] < 0, fdf['neg_selection_fdr'], fdf['pos_selection_fdr'])
         fdf['log10FDR'] = -10 * np.log10(fdf['fdr'])
         contrasts = fdf['contrast'].sort_values().unique()
