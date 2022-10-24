@@ -1,7 +1,7 @@
 import streamlit as st
 from PIL import Image
-from scripts import library_map, eda, dea, results
-
+from scripts import library_map, eda, dea, results, kegg_maps
+import base64
 st.set_page_config(page_title="mBARq App", layout='wide',
                    page_icon=Image.open("images/image.png")
                     )
@@ -10,7 +10,11 @@ st.image("images/mbarq-logo.png")
 
 def home_page():
     url = "https://github.com/MicrobiologyETHZ/mbarq"
+
+
     st.markdown(f""" 
+    
+    
     
   #
     
@@ -42,8 +46,8 @@ def home_page():
 
     """)
 
-home_tab, lib_tab, eda_tab, dea_tab = st.tabs(["  🏠 Home   ", "   📍 Library Map   ",
-                               "   📈 Exploratory Analysis   ", '   📊 Differential Abundance   '])
+home_tab, lib_tab, eda_tab, dea_tab, map_tab = st.tabs(["  🏠 Home   ", "   📍 Library Map   ",
+                               "   📈 Exploratory Analysis   ", '   📊 Differential Abundance   ', '🗺️ Map'])
 with home_tab:
     home_page()
 
@@ -55,3 +59,6 @@ with eda_tab:
 
 with dea_tab:
     results.app()
+
+with map_tab:
+    kegg_maps.app()
