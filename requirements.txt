@@ -7,4 +7,5 @@ scikit-learn == 1.0.2
 streamlit-aggrid==0.3.3
 seaborn
 matplotlib == 3.3.1
-biopython
+biopython == 1.79
+reportlab
