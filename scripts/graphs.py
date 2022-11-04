@@ -32,11 +32,19 @@ def find_PCs(countData, sampleData, numPCs=2, numGenes=None, choose_by='variance
     :param numGenes:
     :return:
     """
+    if countData.columns[0] != 'barcode':
+        st.write('Barcode column not found.')
+        return ()
+    if sampleData.columns[0] != 'sampleID':
+        st.write('sampleID column not found')
+        return ()
+    df = countData.set_index('barcode')
+    sampleData = sampleData.set_index('sampleID').apply(lambda x: x.astype('category'))
     if numGenes:
         # calculate var for each, pick numGenes top var across samples -> df
         if choose_by == 'variance':
-            genes = countData.var(axis=1).sort_values(ascending=False).head(numGenes).index
-            df = countData.loc[genes].T
+            genes = df.var(axis=1).sort_values(ascending=False).head(int(numGenes)).index
+            df = df.loc[genes].T
         else:
             pass
             # todo implement log2fc selection
@@ -45,11 +53,11 @@ def find_PCs(countData, sampleData, numPCs=2, numGenes=None, choose_by='variance
     pca = PCA(n_components=numPCs)
     principalComponents = pca.fit_transform(df)
     pcs = [f'PC{i}' for i in range(1, numPCs + 1)]
-    pDf = (pd.DataFrame(data=principalComponents, columns=pcs)
-           .set_index(df.index))
-    pc_var = {pcs[i]: round(pca.explained_variance_ratio_[i] * 100, 2) for i in range(0, numPCs)}
-    pDf2 = pDf.merge(sampleData, how="left", left_index=True, right_index=True)
-    return pDf2, pc_var
+    pcDf = (pd.DataFrame(data=principalComponents, columns=pcs)
+              .set_index(df.index))
+    pcVar = {pcs[i]: round(pca.explained_variance_ratio_[i] * 100, 2) for i in range(0, numPCs)}
+    pcDf = pcDf.merge(sampleData, how="left", left_index=True, right_index=True)
+    return pcDf, pcVar
 
 
 def graph_library_map(map_df, attr_names, chr_col='chr', color_by_cols=('in CDS', 'library')):
@@ -82,98 +90,40 @@ def graph_library_map(map_df, attr_names, chr_col='chr', color_by_cols=('in CDS'
     st.plotly_chart(fig, use_container_width=True)
 
 
-def barcode_abundance(df, sampleData):
-    colors, alphabetClrs, all_clrs = define_color_scheme()
-    # Process the dataframe
-    df = df.dropna()
-    barcode = df.columns[0]
-    gene_name = df.columns[1]
-    df = df.set_index([barcode, gene_name])
-    df = np.log2(df / df.sum() * 1000000 + 0.5)
-    sampleDataAb = sampleData.reset_index()
-    df = df.reset_index()
-
-    # Get user input
-    c1, c2 = st.columns(2)
-    compare_by = c1.selectbox('Compare across', sampleDataAb.columns)
-    categories = c1.multiselect(f'Categories of {compare_by} to display',
-                                ['All'] + list(sampleDataAb[compare_by].unique()))
-
-    filter_by = c2.selectbox("Filter by", sampleDataAb.columns)
-    filter_out = c2.selectbox(f'Which category of {filter_by} to keep?',
-                              [None] + list(sampleDataAb[filter_by].unique()))
-    if 'All' in categories:
-        categories = list(sampleDataAb[compare_by].unique())
-    # color_by = c2.selectbox('Color by', [barcode, gene_name] + list(sampleDataAb.columns))
-    genes = st.multiselect("Choose gene(s) of interest", df[gene_name].unique())
-    if len(genes) * len(categories) > 40:
-        st.write('Too many genes/categories to display, consider choosing fewer genes')
-    else:
-        gene_df = df[df[gene_name].isin(genes)]
-
-        sample_df = sampleDataAb[sampleDataAb[compare_by].isin(categories)]
-        if filter_out:
-            sample_df = sample_df[sample_df[filter_by] == filter_out]
-        gene_df2 = (gene_df.melt(id_vars=[barcode, gene_name], value_name='log2CPM', var_name='sampleID')
-                    .merge(sample_df, how='inner', on='sampleID'))
-        groupby = st.radio('Group by', [gene_name, compare_by])
-        color_by = [c for c in [gene_name, compare_by] if c != groupby][0]
-
-        fig = px.box(gene_df2, x=groupby, y='log2CPM', color=color_by,
-                     hover_data=[barcode, gene_name] + list(sampleData.columns), points='all',
-                     color_discrete_sequence=all_clrs,)
-
+def barcode_abundance(geneDf, groupBy, colorBy, colorSeq):
+        fig = px.box(geneDf, x=groupBy, y='log2CPM', color=colorBy,
+                     hover_data=geneDf.columns, points='all',
+                     color_discrete_sequence=colorSeq,)
         fig.update_layout({'paper_bgcolor': 'rgba(0,0,0,0)', 'plot_bgcolor': 'rgba(0,0,0,0)'}, autosize=True,
                           font=dict(size=16))
         fig.update_yaxes(showgrid=True, gridwidth=0.5, gridcolor='LightGrey')
-        st.plotly_chart(fig, use_container_width=True)
+        return fig
 
 
-def pca_figure(countData, sampleData, choose_by='variance', layout=(3,1)):
-    _, aC, all_clrs = define_color_scheme()
-    c1, c2 = st.columns(layout)
-    c2.write('### PCA Options')
-    numPCs = c2.number_input("Select number of Principal Components", min_value=2, max_value=50, value=10)
-    numGenes = c2.number_input("Number of genes to use", min_value=2, value=250, max_value=countData.shape[0])
-    pDf, pc_var = find_PCs(countData, sampleData, numPCs, numGenes, choose_by)
-    missing_meta = " ,".join(list(pDf[pDf.isna().any(axis=1)].index))
-    st.write(f"The following samples have missing_metadata and will not be shown: {missing_meta}")
-    pDf = pDf[~pDf.isna().any(axis=1)]
-    pcX_labels = [f'PC{i}' for i in range(1, numPCs + 1)]
-    expVars = [c for c in pDf.columns if c not in pcX_labels]
-    pcX = c2.selectbox('X-axis component', pcX_labels)
-    pcY = c2.selectbox('Y-axis component', [pc for pc in pcX_labels if pc != pcX])
-    pcVar = c2.radio('Variable to highlight', expVars)
-    pcSym = c2.radio('Variable to show as symbol', [None] + expVars)
-
-    fig = px.scatter(pDf, x=pcX, y=pcY, color=pcVar, symbol=pcSym,
-                     labels={pcX: f'{pcX}, {pc_var[pcX]} % Variance',
-                             pcY: f'{pcY}, {pc_var[pcY]} % Variance'},
-                     color_discrete_sequence=all_clrs,
+def pca_figure(pcDf, pcX, pcY, pcVarHi, pcVar, pcSym, expVars, colorSeq):
+    fig = px.scatter(pcDf, x=pcX, y=pcY, color=pcVarHi, symbol=pcSym,
+                     labels={pcX: f'{pcX}, {pcVar[pcX]} % Variance',
+                             pcY: f'{pcY}, {pcVar[pcY]} % Variance'},
+                     color_discrete_sequence=colorSeq,
                      template='plotly_white',
-                     height=800, hover_data=expVars, hover_name=pDf.index)
+                     height=800, hover_data=expVars, hover_name=pcDf.index)
     fig.update_layout({'paper_bgcolor': 'rgba(0,0,0,0)', 'plot_bgcolor': 'rgba(0,0,0,0)'},
                       autosize=True,
-                      font=dict(size=30))
+                      font=dict(size=20))
     fig.update_traces(marker=dict(size=24,
                                   line=dict(width=2,
                                             color='DarkSlateGrey'), opacity=0.9),
                       selector=dict(mode='markers'))
-    c1.write(f'### {pcX} vs {pcY}, highlighting {pcVar}')
-    c1.plotly_chart(fig, use_container_width=True)
-    c3, c4 = st.columns(2)
-    pDf_sum = pDf.groupby(pcVar).median()
-    varDf = pd.DataFrame.from_dict(pc_var, orient='index').reset_index()
+    varDf = pd.DataFrame.from_dict(pcVar, orient='index').reset_index()
     varDf.columns = ['PC', '% Variance']
     fig2 = px.line(varDf, x='PC', y='% Variance', markers=True,
                    labels={'PC': ''})
     fig2.update_traces(marker=dict(size=12,
                                    line=dict(width=2,
                                              color='DarkSlateGrey')))
-    c3.write('### Scree Plot')
-    c3.plotly_chart(fig2)
-    c4.write(f'### PCs summarized by {pcVar}')
-    c4.plotly_chart(px.imshow(pDf_sum), use_container_width=True)
+    pcSum = pcDf.groupby(pcVarHi).median()
+    fig3 = px.imshow(pcSum)
+    return fig, fig2, fig3
 
 
 def show_lfc_ranking(fdf, contrasts, libraries):
@@ -245,16 +195,15 @@ def link_to_string(hits_df, st_col, lfc_col='LFC', gene_name='Name'):
         sleep(1)
 
 
-def plot_rank(rank_df, colors, hover_dict):
-    fig = px.scatter(rank_df, x='ranking', y='LFC', color='hit', symbol='contrast',
+def plot_rank(rank_df, colors, hover_dict, gene_id):
+    fig = px.scatter(rank_df, x='ranking', y='LFC_median', color='hit', symbol='contrast',
                      height=800,
                      color_discrete_map={
                          True: colors['teal'],
                          False: colors['grey']},
-                     hover_name='Name',
-
+                     hover_name=gene_id,
                      hover_data=hover_dict,
-                     labels={"ranking": '', 'LFC': 'Log2 FC'}
+                     labels={"ranking": '', 'LFC_median': 'Log2 FC'}
                      )
     fig.add_hline(y=0, line_width=2, line_dash="dash", line_color="grey")
     fig.update_xaxes(showticklabels=False)
@@ -267,13 +216,13 @@ def plot_rank(rank_df, colors, hover_dict):
     return fig
 
 
-def plot_position(position_df, colors, hover_dict):
-    fig = px.scatter(position_df, x='Start', y='mean_LFC', color='contrast', size='number of libraries', symbol='hit',
+def plot_position(position_df, hover_dict, gene_id):
+    fig = px.scatter(position_df, x='Start', y='LFC_median', color='contrast', size='library_nunique',
                      height=800,
                      color_discrete_sequence=px.colors.qualitative.D3,
-                     hover_name='Name',
+                     hover_name=gene_id,
                      hover_data=hover_dict,
-                     labels={"ranking": '', 'LFC': 'Log2 FC'}
+                     labels={'LFC_median': 'Log2 FC'}
                      )
     fig.add_hline(y=0, line_width=2, line_dash="dash", line_color="grey")
 

@@ -7,18 +7,16 @@ from Bio import SeqIO
 from Bio.KEGG.REST import *
 from Bio.KEGG.KGML import KGML_parser
 from Bio.Graphics.KGML_vis import KGMLCanvas
-from Bio.Graphics.ColorSpiral import ColorSpiral
-
 import numpy as np
+#from fpdf import FPDF
+
 
 def displayPDF(file):
     # Opening file from file path
     with open(file, "rb") as f:
         base64_pdf = base64.b64encode(f.read()).decode('utf-8')
-
     # Embedding PDF in HTML
     pdf_display = F'<iframe src="data:application/pdf;base64,{base64_pdf}" width="700" height="1000" type="application/pdf"></iframe>'
-
     # Displaying File
     st.markdown(pdf_display, unsafe_allow_html=True)
 
@@ -35,10 +33,9 @@ def display_kegg_selector(df, kegg_col='KEGG_Pathway', kegg_names_file="./exampl
 
 
 
-def app():
-    #fname = 'ko00010_d1_map.pdf'
-    #isplayPDF("ko00010_d1_map.pdf")
 
+
+def app():
     result_file = st.file_uploader('Upload results file', accept_multiple_files=False)
     if result_file:
         data = pd.read_csv(result_file)
@@ -88,9 +85,46 @@ def app():
                         graphic.name = name
                     else:
                         graphic.bgcolor = '#FFFFFF'
-            if st.button('Draw'):
-                fname = f"{pathwayName}_{day}_map.pdf"
-                canvas.draw(fname)
+            c1, c2 = st.columns(2)
+            st.markdown("⚠️ Displaying the map is only possible in Firefox")
+            fname = f"{pathwayName}_{day}_map.pdf"
+            canvas.draw(fname)
+            if c1.button(f'Display {pathwayName} map'):
                 displayPDF(fname)
-            else:
-                st.write("No map shown")
+
+            with open(fname, "rb") as f:
+                c2.download_button(
+                    f"Download {pathwayName} map",
+                    data=f,
+                    file_name=fname,
+                )
+
+
+
+
+        # kegg_col = 'KEGG_Pathway'
+        # if kegg_col not in subset_df.columns:
+        #     st.write("No KEGG Pathway information found.")
+        #     kegg_to_show = 'None'
+        #     kegg_df = subset_df.copy()
+        # else:
+        #     st.markdown('#### Analyze KEGG Maps')
+        #     kegg_to_show = display_kegg_selector(subset_df, kegg_col)
+        #     if kegg_to_show != 'None':
+        #         kegg_df = subset_df[subset_df[kegg_col].str.contains(kegg_to_show.split(":")[0])]
+        #         pathwayName = kegg_to_show.split(":")[0]
+        #         contrast = contrasts[0]
+        #         c1, c2 = st.columns(2)
+        #         if c1.button(f'Display {pathwayName} map'):
+        #             fname = display_kegg_map(kegg_df, pathwayName, contrast )
+        #             displayPDF(fname)
+        #             c1.markdown("⚠️ Displaying the map is only possible in Firefox")
+        #             with open(fname, "rb") as f:
+        #                 c2.download_button(
+        #                     f"Download {pathwayName} map",
+        #                     data=f,
+        #                     file_name=fname,
+        #                 )
+        #     else:
+        #         kegg_df = subset_df.copy()
+        #         st.write("No KEGG pathway selected")
