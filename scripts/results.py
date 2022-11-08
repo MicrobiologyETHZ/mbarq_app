@@ -2,10 +2,8 @@ import streamlit as st
 from pathlib import Path
 import pandas as pd
 import numpy as np
-import plotly.express as px
 import requests
 from time import sleep
-from io import StringIO
 from scripts.graphs import define_color_scheme
 from scripts.graphs import plot_rank, plot_position, plot_heatmap
 import base64
@@ -72,8 +70,11 @@ class ResultDataSet:
             fdf = fdf.fillna({self.gene_id: 'N/A'})  # todo do I need to do this?
             return fdf, all(gff_col_list)  # todo all or any?
 
-    def summarize_libraries(self, library_to_show, lfc_th, fdr_th):
-        self.results_df['hit'] = ((abs(self.results_df['LFC']) > lfc_th) & (self.results_df['fdr'] < fdr_th))
+    def summarize_libraries(self, library_to_show, lfc_low, lfc_hi, fdr_th):
+        if not lfc_hi:
+            self.results_df['hit'] = ((abs(self.results_df['LFC']) > lfc_low) & (self.results_df['fdr'] < fdr_th))
+        else:
+            self.results_df['hit'] = ((self.results_df['LFC'] > lfc_low)& (self.results_df['LFC'] < lfc_hi) & (self.results_df['fdr'] < fdr_th))
         if library_to_show != 'All':
             self.results_df = self.results_df[self.results_df['library'] == library_to_show]
             self.results_df['LFC_median'] = self.results_df['LFC']
@@ -91,12 +92,18 @@ class ResultDataSet:
         #df = self.results_df[~fdf[gene_id].str.contains(':')].copy() # todo come up with cleverer way to filter these
         self.subset_df = self.results_df[(self.results_df['contrast'].isin(contrast_to_show))].copy()
 
-    def connect_to_string(self, up, fdr_th, lfc_th, species):
-        if up == 'Upregulated Only':
-            self.string_df = self.subset_df[(self.subset_df['LFC'] > 0) & (self.subset_df['hit'] == True)]
-        elif up == 'Downregulated Only':
-            self.string_df = self.subset_df[(self.subset_df['LFC'] < 0) & (self.subset_df['hit'] == True)]
-        st.markdown(f"There are {self.string_df[self.gene_id].nunique()} hits with FDR < {fdr_th} and absolute LFC > {lfc_th}")
+    def connect_to_string(self, up, fdr_th, lfc_low, lfc_hi, species):
+        if not lfc_hi:
+            if up == 'Upregulated Only':
+                self.string_df = self.subset_df[(self.subset_df['LFC'] > 0) & (self.subset_df['hit'] == True)]
+            elif up == 'Downregulated Only':
+                self.string_df = self.subset_df[(self.subset_df['LFC'] < 0) & (self.subset_df['hit'] == True)]
+            else:
+                self.string_df = self.subset_df[self.subset_df['hit'] == True]
+            st.markdown(f"There are {self.string_df[self.gene_id].nunique()} hits with FDR < {round(fdr_th, 2)} and absolute LFC > {lfc_low}")
+        else:
+            self.string_df = self.subset_df[self.subset_df['hit'] == True]
+            st.markdown(f"There are {self.string_df[self.gene_id].nunique()} hits with FDR < {round(fdr_th,2)} and within LFC range from {lfc_low} to {lfc_hi}")
 
         string_api_url = "https://version-11-5.string-db.org/api"
         output_format = 'tsv-no-header'
@@ -118,16 +125,17 @@ class ResultDataSet:
 
     def get_gene_to_kegg_map(self, kegg_id):
         if self.subset_df.contrast.nunique() > 1:
-            st.write("⚠️WARNING: Multiple contrasts selected! Will summarize across different contrasts")
+            st.write("⚠️WARNING: Multiple contrasts selected! The map will show median LFC across the selected contrasts")
 
         hitSummary = (self.subset_df.groupby([kegg_id]).hit.sum()
                       .reset_index()
                       .rename({'hit': 'hitSum'}, axis=1))
+
         self.subset_df = (self.subset_df.merge(hitSummary, on=kegg_id, how='outer'))
         self.subset_df['hitStar'] = self.subset_df['hitSum'].apply(lambda x: '*' if x > 0 else '')
         self.subset_df['NameForMap'] = self.subset_df[self.gene_id] + self.subset_df['hitStar'] + \
-                                       " (" + self.subset_df['LFC_median'].round(2).astype(str) + ")"
-        data_short = self.subset_df[[self.gene_id, kegg_id, 'NameForMap', 'LFC_median']].drop_duplicates().dropna()
+                                       "(" + self.subset_df['LFC_median'].round(2).astype(str) + ")"
+        data_short = self.subset_df[set([self.gene_id, kegg_id, 'NameForMap', 'LFC_median'])].drop_duplicates().dropna()
         norm = matplotlib.colors.Normalize(vmin=-6, vmax=6, clip=True)
         mapper = matplotlib.cm.ScalarMappable(norm=norm, cmap=sns.diverging_palette(220, 20, as_cmap=True))
         data_short['hex'] = data_short.LFC_median.apply(mapper.to_rgba).apply(matplotlib.colors.to_hex)
@@ -136,12 +144,15 @@ class ResultDataSet:
         return ko_dict
 
     def get_kegg_path_df(self, pathGenes, kegg_id):
-        self.kegg_df = self.subset_df[self.subset_df[kegg_id].isin(pathGenes)].copy()
-
+        if pathGenes:
+            self.kegg_df = self.subset_df[self.subset_df[kegg_id].isin(pathGenes)].copy()
+        else:
+            self.kegg_df = self.subset_df.copy()
 
 class DrawKeggMaps:
     def __init__(self, organism):
         self.organism = organism
+
     @st.cache
     def get_org_kegg_pathways(self):
         result = pd.read_table(io.StringIO(kegg_list("pathway", self.organism).read()), header=None)
@@ -151,12 +162,6 @@ class DrawKeggMaps:
         result['KEGG_Display'] = result[f'KEGG_Pathway'] + ":" + result['Pathway_Description']
         path_map = result.set_index('KEGG_Display').to_dict()
         return path_map['KEGG_Pathway']
-
-    def get_kegg_map(self, pathwayName):
-        pathwayKGML = KGML_parser.read(kegg_get(pathwayName, "kgml"))
-        pathGeneNames = [gene.name.split() for gene in pathwayKGML.genes]
-        pathGeneNames = [gene.split(":")[1] for sublist in pathGeneNames for gene in sublist]
-        return pathwayKGML, pathGeneNames
 
     def displayPDF(self, file):
         # Opening file from file path
@@ -168,8 +173,11 @@ class DrawKeggMaps:
         st.markdown(pdf_display, unsafe_allow_html=True)
 
     def display_kegg_map(self, pathwayName, ko_dict, title):
-        pathwayKGML, pathwayGenes = self.get_kegg_map(pathwayName)
+        pathwayKGML = KGML_parser.read(kegg_get(pathwayName, "kgml"))
+        pathGeneNames = [gene.name.split() for gene in pathwayKGML.genes]
+        pathGeneNames = set([gene.split(":")[1] for sublist in pathGeneNames for gene in sublist])
         canvas = KGMLCanvas(pathwayKGML, import_imagemap=True)
+        not_found = []
         for element in pathwayKGML.genes:
             color = None
             name = None
@@ -181,6 +189,12 @@ class DrawKeggMaps:
                 if color is not None:
                     graphic.bgcolor = color
                     graphic.name = name
+                    not_found.append(0)
+                else:
+                    not_found.append(1)
+        if sum(not_found)/len(not_found) > 0.85:
+            st.write(f'WARNING: ⚠️ {sum(not_found)} out of {len(not_found)} pathway genes not found in the dataset. Double check gene names match those used by KEGG')
+
         fname = f"{title}_map.pdf"
         canvas.draw(fname)
         k1, k2 = st.columns(2)
@@ -192,7 +206,7 @@ class DrawKeggMaps:
                 data=f,
                 file_name=fname,
             )
-        return pathwayGenes
+        return pathGeneNames
 
 @st.cache
 def convert_df(df):
@@ -205,7 +219,6 @@ def convert_df(df):
 
 def app():
     colors, alphabetClrs, all_clrs = define_color_scheme()
-
     with st.container():
         st.subheader('Load the data file')
         data_type = st.radio('Choose dataset to show', ['Load my data', 'Look at an example'], index=0)
@@ -225,11 +238,6 @@ def app():
                 st.write('Result table is empty')
 
     if not rds.results_df.empty:
-        kegg_avail = st.checkbox('KEGG annotation available?')
-        if kegg_avail:
-            org_col, kegg_col = st.columns(2)
-            organismId = org_col.text_input('Enter 3 letter organsim code', value='sey')
-            kegg_id = kegg_col.selectbox('Column corresponding to KEGG IDs', options=rds.results_df.columns)
 
         contrasts = rds.results_df['contrast'].sort_values().unique()
         libraries = rds.results_df['library'].sort_values().unique()
@@ -240,31 +248,51 @@ def app():
         contrast_to_show = contrast_col.multiselect('Select a contrast', contrasts, default=contrasts[0])
         library_to_show = lfc_lib_col.selectbox('Select library to show', libraries)
         fdr_th = fdr_col.number_input('FDR cutoff', value=0.05)
-        lfc_th = lfc_col.number_input('Log FC cutoff (absolute)', min_value=0.0, step=0.5, value=1.0)
-        rds.summarize_libraries(library_to_show,  lfc_th, fdr_th)
+        type_lfc_th = lfc_col.radio('Absolute LFC cutoff or define range', ['Absolute', 'Range'])
+        if type_lfc_th == 'Absolute':
+            lfc_low = lfc_col.number_input('Log FC cutoff (absolute)', min_value=0.0, step=0.5, value=1.0)
+            lfc_hi = None
+        else:
+            lfc_low = lfc_col.number_input('Min Log FC',  step=0.5, value=-5.0)
+            lfc_hi = lfc_col.number_input('Max Log FC',  step=0.5, value=-1.0)
+
+        rds.summarize_libraries(library_to_show,  lfc_low, lfc_hi, fdr_th)
         rds.subset_results(contrast_to_show)
         # SUBMIT SUBSET TO STRING
         st.markdown('#### Analyze with STRING-db')
         with st.expander('STRING-db'):
-            species = st.number_input("NCBI species taxid", value=99287, help='Salmonella Typhimurium: 99287')
+            species = st.number_input("NCBI species taxid. ❗ Make sure STRING recognizes unique gene identifier (entered above) for the taxon you specify ", value=99287, help='Salmonella Typhimurium: 99287')
             st.markdown(f"Analyze hits for ``{', '.join(contrast_to_show)}`` contrast for ``{library_to_show}`` library(ies)")
-            up = st.radio('Up or Down?', ('Upregulated Only', 'Downregulated Only', 'Both'), key='string')
-            rds.connect_to_string(up, fdr_th, lfc_th, species)
+            if not lfc_hi:
+                up = st.radio('Up or Down?', ('Upregulated Only', 'Downregulated Only', 'Both'), key='string')
+            else:
+                up = 'NA'
+            rds.connect_to_string(up, fdr_th, lfc_low, lfc_hi, species)
         # SUBSET TO A SPECIFIC KEGG PATHWAY IF DESIRED/POSSIBLE
+        st.markdown('#### KEGG Maps')
+        kegg_avail = st.checkbox('KEGG annotation available?')
         if kegg_avail:
-            st.markdown('#### KEGG Maps')
+            org_col, kegg_col = st.columns(2)
+            organismId = org_col.text_input('Enter 3 letter organsim code', value='sey')
+            kegg_options = [c for c in rds.results_df.columns if 'LFC' not in c and 'fdr' not in c]
+            try:
+                kix = kegg_options.index('locus_tag')
+            except ValueError:
+                kix = 0
+            kegg_id = kegg_col.selectbox('Column corresponding to KEGG Entry names (usually locus_tag)', options=kegg_options, index=kix)
             ko_dict = rds.get_gene_to_kegg_map(kegg_id)
             km = DrawKeggMaps(organismId)
             pathwayMap = km.get_org_kegg_pathways()
             pathwayDescription = st.selectbox('Select KEGG Pathway to explore', pathwayMap.keys())
             pathwayName = pathwayMap[pathwayDescription]
-            #pathwayKGML, pathwayGenes = km.get_kegg_map(pathwayName)
             pathwayGenes = km.display_kegg_map(pathwayName, ko_dict, f"{pathwayName}-{'-'.join(contrast_to_show)}")
-            rds.get_kegg_path_df(pathwayGenes, kegg_id)
-            kegg_df = rds.kegg_df
         else:
+            st.write("KEGG maps are unavailable.")
+            kegg_id = gene_id
+            pathwayGenes = []
             pathwayName = 'All Genes'
-            kegg_df = rds.subset_df
+
+        rds.get_kegg_path_df(pathwayGenes, kegg_id)
 
         # VISUALIZE SUBSET BY RANK OR POSITION
         st.markdown('#### Fitness results by rank or position')
@@ -276,7 +304,7 @@ def app():
             # DISPLAY RESULTS BY RANK
             st.subheader(f"{','.join(contrast_to_show)} - {pathwayName}")
             if graph_type == 'Rank':
-                rank_df = (kegg_df[[gene_id, 'contrast', 'LFC_median', 'hit']].drop_duplicates()
+                rank_df = (rds.kegg_df[[gene_id, 'contrast', 'LFC_median', 'hit']].drop_duplicates()
                            .sort_values('LFC_median')
                            .reset_index()
                            .reset_index()
@@ -288,41 +316,50 @@ def app():
                 st.plotly_chart(fig, use_container_width=True)
             # DISPLAY RESULTS BY POSITION
             else:
-                chr_to_show = st.selectbox('Select chromosome', kegg_df.Chromosome.unique())
-                position_df = kegg_df[kegg_df.Chromosome == chr_to_show].copy()
+                chr_to_show = st.selectbox('Select chromosome', rds.kegg_df.Chromosome.unique())
+                position_df = rds.kegg_df[rds.kegg_df.Chromosome == chr_to_show].copy()
                 hover_data = st.multiselect('Data to show on hover:', position_df.columns, key='position')
                 hover_dict = {s: True for s in hover_data}
                 fig = plot_position(position_df, hover_dict, gene_id)
                 st.plotly_chart(fig, use_container_width=True)
-                st.stop()
         # DRAW HEATMAPS FOR THE SUBSET
+        st.markdown('#### Heatmaps for genes/pathways of interest')
         with st.expander('Show LFC Heatmaps'):
             c1, c2 = st.columns(2)
-            heat_by = c1.radio('Show heatmap by:', ('Genes of Interest', 'KEGG Pathway'))
+            heat_by = c1.radio('Show heatmap by:', ( 'KEGG Pathway', 'Genes of Interest'))
             if heat_by == 'KEGG Pathway':
                 if pathwayName == 'All Genes':
                     st.markdown('No KEGG pathway selected :thinking_face:')
-                heat_df = pd.DataFrame() # todo stopping here. Tired.
+                    heat_df = pd.DataFrame() # todo stopping here. Tired.
+                else:
+                    heatmap_title = pathwayName
+                    heat_df = rds.results_df[rds.results_df[kegg_id].isin(pathwayGenes)]
+                    absent = pd.DataFrame(
+                        pd.Series(list(set(pathwayGenes) - set(heat_df[kegg_id].unique())), name=kegg_id))
+                    heat_df = heat_df[[gene_id, kegg_id, 'LFC_median', 'contrast']].drop_duplicates()
+                    heat_df = pd.concat([heat_df, absent], axis=0)
+                    s = heat_df[gene_id].fillna('-').values
+                    p = heat_df[kegg_id].values
+                    heat_df['full_id'] = [
+                        f"{kegg_id}: {gene_id}" if gene_id != '-' and gene_id != kegg_id else f"{kegg_id}" for
+                        kegg_id, gene_id in zip(p, s)]
+                    heat_df = heat_df.pivot(index='full_id', columns='contrast', values='LFC_median')
             elif heat_by == 'Genes of Interest':
-                show_genes = st.multiselect("Choose gene(s) of interest", subset_df[gene_id].unique())
+                heatmap_title = ''
+                show_genes = st.multiselect("Choose gene(s) of interest", rds.results_df[gene_id].unique())
                 if not show_genes:
                     st.markdown("No genes selected :thinking_face:")
+                    heat_df = pd.DataFrame()
                 else:
-                    heatDf = subset_df[subset_df[gene_id].isin(show_genes)]
-            if not heatDf.empty:
+                    heat_df = rds.results_df[rds.results_df[gene_id].isin(show_genes)][[gene_id, 'contrast', 'LFC_median']].drop_duplicates()
+                    heat_df = heat_df.pivot(index=gene_id, columns='contrast', values='LFC_median')
+            if not heat_df.empty:
                 #st.write(heatDf) # todo replace by aggrid
-                absent = heatDf[heatDf.LFC.isna()]
-                heatDf = (heatDf[[gene_id, 'LFC', 'contrast', 'library']]
-                          .groupby(['contrast', 'Name'])
-                          .agg({'LFC': ['mean']})
-                          .reset_index())
-                heatDf.columns = ['contrast', 'Name', 'LFC (mean)']
-                heatDf = pd.concat([heatDf, absent[['Name']]]).drop_duplicates()
-                heatDf = heatDf.pivot(index=gene_id, columns='contrast', values='LFC (mean)')
 
-                fig = plot_heatmap(heatDf)
+                fig = plot_heatmap(heat_df)
+                st.subheader(heatmap_title)
                 st.plotly_chart(fig, use_container_width=False)
                 st.markdown("### Download Files as csv")
                 fname = st.text_input("File name", value=f"heatmap")
                 fname = fname + ".csv"
-                st.download_button("Download data as csv file", convert_df(heatDf.reset_index()), file_name=fname)
+                st.download_button("Download data as csv file", convert_df(heat_df.reset_index()), file_name=fname)

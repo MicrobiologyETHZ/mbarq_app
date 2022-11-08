@@ -222,7 +222,8 @@ def plot_position(position_df, hover_dict, gene_id):
                      color_discrete_sequence=px.colors.qualitative.D3,
                      hover_name=gene_id,
                      hover_data=hover_dict,
-                     labels={'LFC_median': 'Log2 FC'}
+                     labels={'LFC_median': 'Log2 FC'},
+
                      )
     fig.add_hline(y=0, line_width=2, line_dash="dash", line_color="grey")
 
@@ -230,12 +231,14 @@ def plot_position(position_df, hover_dict, gene_id):
                       font=dict(size=18))
     fig.update_traces(marker=dict(
         line=dict(width=1,
-                  color='DarkSlateGrey'), opacity=0.8),
+                  color='DarkSlateGrey')),
+        opacity=0.8,
         selector=dict(mode='markers'))
     return fig
 
 
 def plot_heatmap(heatDf):
+    heatDf.index.name = 'Gene'
     fig = px.imshow(heatDf, color_continuous_scale=px.colors.diverging.Geyser,
                      color_continuous_midpoint=0,
 
