@@ -114,7 +114,7 @@ def app():
                 c1, c2 = st.columns((3, 1))
                 c2.write('### PCA Options')
                 numPCs = c2.number_input("Select number of Principal Components", min_value=2, max_value=50, value=10)
-                numGenes = c2.number_input("Number of genes to use", min_value=2, value=250,
+                numGenes = c2.number_input("Number of genes to use", min_value=numPCs, value=min(250, pcaDf.shape[0]),
                                            max_value=pcaDf.shape[0])
                 chooseBy = 'variance'
                 numGenes = int(numGenes)
