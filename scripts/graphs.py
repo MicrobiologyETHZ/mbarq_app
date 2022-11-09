@@ -64,7 +64,7 @@ def graph_library_map(map_df, attr_names, chr_col='chr', color_by_cols=('in CDS'
     attr_names = set(attr_names)
     colors, alphabetClrs, all_clrs = define_color_scheme()
     graph_type = st.radio("Choose graph", ['Coverage Histogram', 'Individual Insertions'])
-    c1, c2 = st.columns(2)
+    c1, c2, c3 = st.columns(3)
     seqid = c1.selectbox('Choose sequence to display', map_df[chr_col].unique())
     df_to_show = map_df[map_df[chr_col] == seqid].sort_values("insertion_site")
     if graph_type == 'Individual Insertions':
@@ -79,9 +79,9 @@ def graph_library_map(map_df, attr_names, chr_col='chr', color_by_cols=('in CDS'
 
     elif graph_type == 'Coverage Histogram':
         num_bins = c2.number_input('Number of bins', value=100)
-        st.write(int(num_bins))
+        hist_col = c3.text_input('Color hex', value=colors['teal'])
         fig = px.histogram(df_to_show, x='insertion_site', nbins=int(num_bins),
-                           labels={'insertion_site': 'Position, bp'}, color_discrete_sequence=[colors['teal']])
+                           labels={'insertion_site': 'Position, bp'}, color_discrete_sequence=[hist_col])
         fig.update_layout(bargap=0.1)
 
     fig.update_layout({'paper_bgcolor': 'rgba(0,0,0,0)', 'plot_bgcolor': 'rgba(0,0,0,0)'},

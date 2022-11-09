@@ -193,11 +193,12 @@ class DrawKeggMaps:
                 else:
                     not_found.append(1)
         if sum(not_found)/len(not_found) > 0.85:
-            st.write(f'WARNING: ⚠️ {sum(not_found)} out of {len(not_found)} pathway genes not found in the dataset. Double check gene names match those used by KEGG')
+            st.warning(f'⚠️ {sum(not_found)} out of {len(not_found)} pathway genes not found in the dataset. Double check gene names match those used by KEGG')
 
         fname = f"{title}_map.pdf"
         canvas.draw(fname)
         k1, k2 = st.columns(2)
+        st.info("Display works in Firefox only")
         if k1.button(f'Display {pathwayName} map'):
             self.displayPDF(fname)
         with open(fname, "rb") as f:
@@ -261,7 +262,8 @@ def app():
         # SUBMIT SUBSET TO STRING
         st.markdown('#### Analyze with STRING-db')
         with st.expander('STRING-db'):
-            species = st.number_input("NCBI species taxid. ❗ Make sure STRING recognizes unique gene identifier (entered above) for the taxon you specify ", value=99287, help='Salmonella Typhimurium: 99287')
+            st.info(f"❗Make sure STRING recognizes unique gene identifier (you've entered `{gene_id}`) for the taxon you specify")
+            species = st.number_input("NCBI species taxid", value=99287, help='Salmonella Typhimurium: 99287')
             st.markdown(f"Analyze hits for ``{', '.join(contrast_to_show)}`` contrast for ``{library_to_show}`` library(ies)")
             if not lfc_hi:
                 up = st.radio('Up or Down?', ('Upregulated Only', 'Downregulated Only', 'Both'), key='string')
@@ -270,6 +272,7 @@ def app():
             rds.connect_to_string(up, fdr_th, lfc_low, lfc_hi, species)
         # SUBSET TO A SPECIFIC KEGG PATHWAY IF DESIRED/POSSIBLE
         st.markdown('#### KEGG Maps')
+        st.write('')
         kegg_avail = st.checkbox('KEGG annotation available?')
         if kegg_avail:
             org_col, kegg_col = st.columns(2)
@@ -282,10 +285,13 @@ def app():
             kegg_id = kegg_col.selectbox('Column corresponding to KEGG Entry names (usually locus_tag)', options=kegg_options, index=kix)
             ko_dict = rds.get_gene_to_kegg_map(kegg_id)
             km = DrawKeggMaps(organismId)
-            pathwayMap = km.get_org_kegg_pathways()
+            with st.spinner(f"Loading the list of all KEGG pathways for {organismId}"):
+                pathwayMap = km.get_org_kegg_pathways()
+
             pathwayDescription = st.selectbox('Select KEGG Pathway to explore', pathwayMap.keys())
             pathwayName = pathwayMap[pathwayDescription]
-            pathwayGenes = km.display_kegg_map(pathwayName, ko_dict, f"{pathwayName}-{'-'.join(contrast_to_show)}")
+            with st.spinner(f'Loading KEGG map for {pathwayName}...'):
+                pathwayGenes = km.display_kegg_map(pathwayName, ko_dict, f"{pathwayName}-{'-'.join(contrast_to_show)}")
         else:
             st.write("KEGG maps are unavailable.")
             kegg_id = gene_id

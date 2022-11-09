@@ -1,6 +1,6 @@
 import streamlit as st
 from PIL import Image
-from scripts import library_map, eda, dea, results, kegg_maps
+from scripts import library_map, eda, dea, results
 import base64
 st.set_page_config(page_title="mBARq App", layout='wide',
                    page_icon=Image.open("images/image.png")
@@ -46,8 +46,8 @@ def home_page():
 
     """)
 
-home_tab, lib_tab, eda_tab, dea_tab, map_tab = st.tabs(["  🏠 Home   ", "   📍 Library Map   ",
-                               "   📈 Exploratory Analysis   ", '   📊 Differential Abundance   ', '🗺️ Map'])
+home_tab, lib_tab, eda_tab, dea_tab = st.tabs(["  🏠 Home   ", "   📍 Library Map   ",
+                               "   📈 Exploratory Analysis   ", '   📊 Differential Abundance'])
 with home_tab:
     home_page()
 
@@ -60,5 +60,5 @@ with eda_tab:
 with dea_tab:
     results.app()
 
-with map_tab:
-    kegg_maps.app()
+# with test_tab:
+#     dea.app()
