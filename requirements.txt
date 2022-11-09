@@ -9,3 +9,4 @@ seaborn
 matplotlib == 3.3.1
 biopython == 1.79
 reportlab
+pandera
