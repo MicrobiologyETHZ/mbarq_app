@@ -2,11 +2,11 @@ import streamlit as st
 import pandas as pd
 from sklearn.decomposition import PCA
 import numpy as np
-import plotly.express as px
-from itertools import cycle
-from pathlib import Path
+import pandera as pa
+from pandera.typing import Index, DataFrame, Series
+from pandera.errors import SchemaError
+from scripts.graphs import pca_figure, barcode_abundance, define_color_scheme
 
-from scripts.graphs import pca_figure, barcode_abundance, define_color_scheme, find_PCs
 
 @st.cache
 def convert_df(df):
@@ -14,6 +14,71 @@ def convert_df(df):
     return df.to_csv(index=False).encode('utf-8')
 
 
+class CountsSchema(pa.SchemaModel):
+    barcode: Series[str] = pa.Field(coerce=True)
+
+
+class CountDataSet:
+    def __init__(self, countFile, sampleDataFile):
+        self.countData = pd.read_csv(countFile)
+        self.sampleData = pd.read_csv(sampleDataFile).fillna('N/A')
+        self.valid = self._validate()
+
+    def _validate(self):
+        """
+        First column of sampleData should be sampleIDs
+        """
+        self.sampleData = self.sampleData.rename({self.sampleData.columns[0]: 'sampleID'})
+        samplesFound = list(set(self.sampleData.sampleID.unique()).intersection(self.countData.columns))
+        if not samplesFound or any([x in samplesFound for x in [self.countData.columns[0], self.countData.columns[1]]]):
+            return False
+        self.sampleData = self.sampleData[self.sampleData.sampleID.isin(samplesFound)]
+        self.countData = (self.countData.rename({self.countData.columns[0]: 'barcode',
+                                                 self.countData.columns[1]: 'Gene Name'}, axis=1)
+                                        .dropna(subset=['Gene Name'])
+                                        .drop_duplicates())
+        self.countData = self.countData[['barcode', 'Gene Name'] + samplesFound]
+        if self.countData.empty:
+            return False
+        return True
+
+    def normalize_counts(self):
+        self.countData = self.countData.set_index(['barcode', 'Gene Name'])
+        self.countData = self.countData.loc[:, self.countData.sum() > 0]
+        self.countData = np.log2((self.countData / self.countData.sum()) * 1000000 + 0.5).reset_index()
+
+    def get_PCs(self, numPCs, numGenes, chooseBy):
+        """
+        :param numPCs:
+        :param numGenes:
+        :param chooseBy:
+        :return:
+        """
+        pcaDf = self.countData.set_index('barcode').copy()
+        pcaDf = pcaDf.drop('Gene Name', axis=1)
+        pcaSd = self.sampleData.set_index('sampleID').apply(lambda x: x.astype('category'))
+        if numGenes:
+            # calculate var for each, pick numGenes top var across samples -> df
+            if chooseBy == 'variance':
+                genes = pcaDf.var(axis=1).sort_values(ascending=False).head(int(numGenes)).index
+                pcaDf = pcaDf.loc[genes].T
+            else:
+                pass
+                # todo implement log2fc selection
+        else:
+            pcaDf = pcaDf.T
+        pca = PCA(n_components=numPCs)
+        principalComponents = pca.fit_transform(pcaDf)
+        pcs = [f'PC{i}' for i in range(1, numPCs + 1)]
+        pcDf = (pd.DataFrame(data=principalComponents, columns=pcs)
+                .set_index(pcaDf.index))
+        pcVar = {pcs[i]: round(pca.explained_variance_ratio_[i] * 100, 2) for i in range(0, numPCs)}
+        pcDf = pcDf.merge(pcaSd, how="left", left_index=True, right_index=True)
+        return pcDf, pcVar
+
+#########
+#  APP  #
+#########
 def app():
     hide_dataframe_row_index = """
                 <style>
@@ -54,6 +119,7 @@ def app():
         - For Barcode Abundance, normalised barcode counts can be visualised for any gene of interest and compared across different sample data variables. 
 
         """)
+
     # LOAD THE DATA
     with st.container():
         st.subheader('Load your own data or browse the example data set')
@@ -84,42 +150,34 @@ def app():
                 file_name='example_sample_data_file.csv',
                 mime='text/csv',
             )
+
         # IF DATA IS LOADED VISUALIZE
         if cfile and mfile:
             """
             Requirements: first column has barcodes, second column has attributes in the countData, rest need to be sampleIDs.
             Sample Data: first column are sampleIDs 
             Will only look at barcodes that were mapped to a feature 
-            """
-            df = pd.read_csv(cfile)
-            countData = (df.rename({df.columns[0]: 'barcode', df.columns[1]: 'Name'}, axis=1)
-                         .dropna()  # todo make sure that does the correct thing
-                         .drop_duplicates()
-                         .set_index(['barcode', 'Name']))
-            countData = np.log2((countData / countData.sum()) * 1000000 + 0.5).reset_index()
-            sampleData = pd.read_csv(mfile).fillna('N/A')
-            sampleData = sampleData.rename({sampleData.columns[0]: 'sampleID'})
-            to_keep = list(set(sampleData.sampleID.unique()).intersection(countData.columns))
-            # CHECK THAT METADATA MATCHES COLUMNS IN THE COUNT FILE
-            if len(to_keep) == 0:
+            # """
+            cds = CountDataSet(cfile, mfile)
+            if not cds.valid:
                 st.write("Sample IDs do not match any columns in the count file")
                 st.stop()
-            pcaDf = countData[['barcode'] + to_keep].copy()
-            sampleData = sampleData[sampleData.sampleID.isin(to_keep)]
-            # Stay consistent -> no index
+            cds.normalize_counts()
             st.write('## PCA plot')
             # PCA GRAPH
             with st.expander('Show PCA'):
                 _, aC, all_clrs = define_color_scheme()
-                c1, c2 = st.columns((3, 1))
-                c2.write('### PCA Options')
-                numPCs = c2.number_input("Select number of Principal Components", min_value=2, max_value=50, value=10)
-                numGenes = c2.number_input("Number of genes to use", min_value=numPCs, value=min(250, pcaDf.shape[0]),
-                                           max_value=pcaDf.shape[0])
+                st.write('### PCA Options')
+                c1, c2, c3, c4 = st.columns(4)
+                numPCs = c1.number_input("Select number of Principal Components", min_value=2, max_value=50, value=10)
+                numGenes = c1.number_input("Number of genes to use", min_value=int(numPCs),
+                                           value=int(min(250, cds.countData.shape[0])),
+                                           max_value=int(cds.countData.shape[0]))
                 chooseBy = 'variance'
                 numGenes = int(numGenes)
                 numPCs = int(numPCs)
-                pcDf, pcVar = find_PCs(pcaDf, sampleData, numPCs, numGenes, chooseBy)
+                #pcDf, pcVar = find_PCs(pcaDf, sampleData, numPCs, numGenes, chooseBy)
+                pcDf, pcVar = cds.get_PCs(numPCs, numGenes, chooseBy)
                 missingMeta = " ,".join(list(pcDf[pcDf.isna().any(axis=1)].index))
                 if missingMeta:
                     st.write(f"The following samples have missing_metadata and will not be shown: {missingMeta}")
@@ -128,44 +186,45 @@ def app():
                 expVars = [c for c in pcDf.columns if c not in pcxLabels]
                 pcX = c2.selectbox('X-axis component', pcxLabels)
                 pcY = c2.selectbox('Y-axis component', [pc for pc in pcxLabels if pc != pcX])
-                pcVarHi = c2.radio('Variable to highlight', expVars)
-                pcSym = c2.radio('Variable to show as symbol', [None] + expVars)
+                pcVarHi = c3.radio('Variable to highlight', expVars)
+                pcSym = c4.radio('Variable to show as symbol', [None] + expVars)
+                pcDf = pcDf.sort_values(pcVarHi)
                 fig1, fig2, fig3 = pca_figure(pcDf, pcX, pcY, pcVarHi, pcVar, pcSym, expVars, all_clrs)
                 c1.write(f'### {pcX} vs {pcY}, highlighting {pcVarHi}')
-                c1.plotly_chart(fig1, use_container_width=True)
-                c3, c4 = st.columns(2)
-                c3.write('### Scree Plot')
-                c3.plotly_chart(fig2)
-                c4.write(f'### PCs summarized by {pcVarHi}')
-                c4.plotly_chart(fig3, use_container_width=True)
+                st.plotly_chart(fig1, use_container_width=True)
+                c5, c6 = st.columns(2)
+                c5.write('### Scree Plot')
+                c5.plotly_chart(fig2)
+                c6.write(f'### PCs summarized by {pcVarHi}')
+                c6.plotly_chart(fig3, use_container_width=True)
 
             # BARCODE ABUNDANCE
             st.write('## Barcode Abundance')
             with st.expander('Show Barcode Abundance'):
                 # Process the dataframe
-                abDf = countData.dropna()
-                barcode = abDf.columns[0]
-                gene_name = abDf.columns[1]
+                #abDf = countData.dropna()
+                barcode = cds.countData.columns[0]
+                gene_name = cds.countData.columns[1]
+
                 # Get user input
                 c1, c2 = st.columns(2)
-                compareCondition = c1.selectbox('Which conditions to compare?', sampleData.columns)
+                compareCondition = c1.selectbox('Which conditions to compare?', cds.sampleData.columns)
                 conditionCategories = c1.multiselect(f'Categories of {compareCondition} to display',
-                                            ['All'] + list(sampleData[compareCondition].unique()))
-
-                filterCondition = c2.selectbox("Filter by", ['No filter'] + list(sampleData.columns))
+                                            ['All'] + list(cds.sampleData[compareCondition].unique()))
+                filterCondition = c2.selectbox("Filter by", ['No filter'] + list(cds.sampleData.columns))
                 if filterCondition == 'No filter':
                     filterCategories = []
                 else:
                     filterCategories = c2.multiselect(f'Which category(ies) of {filterCondition} to keep?',
-                                                      list(sampleData[filterCondition].unique()))
+                                                      list(cds.sampleData[filterCondition].unique()))
                 if 'All' in conditionCategories:
-                    conditionCategories = list(sampleData[compareCondition].unique())
-                genes = st.multiselect("Choose gene(s) of interest", abDf[gene_name].unique())
+                    conditionCategories = list(cds.sampleData[compareCondition].unique())
+                genes = st.multiselect("Choose gene(s) of interest", cds.countData[gene_name].unique())
                 if len(genes) * len(conditionCategories) > 40:
                     st.write('Too many genes/categories to display, consider choosing fewer genes')
                 else:
-                    geneDf = abDf[abDf[gene_name].isin(genes)]
-                    abSampleDf = sampleData[sampleData[compareCondition].isin(conditionCategories)]
+                    geneDf = cds.countData[cds.countData[gene_name].isin(genes)]
+                    abSampleDf = cds.sampleData[cds.sampleData[compareCondition].isin(conditionCategories)]
                     if filterCategories:
                         abSampleDf = abSampleDf[abSampleDf[filterCondition].isin(filterCategories)]
                     geneDf = (geneDf.melt(id_vars=[barcode, gene_name], value_name='log2CPM', var_name='sampleID')

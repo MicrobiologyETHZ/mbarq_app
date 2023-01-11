@@ -75,7 +75,6 @@ def app():
 
     if len(map_files) > 0:
         map_df, attr_names = process_library_maps(map_files)
-
         with st.container():
             graph_library_map(map_df, attr_names)
 

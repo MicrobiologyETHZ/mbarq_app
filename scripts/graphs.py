@@ -10,7 +10,7 @@ from time import sleep
 
 
 def define_color_scheme():
-    alphabetClrs = px.colors.qualitative.Alphabet
+    alphabetClrs = px.colors.qualitative.Dark24
     clrs = ["#f7ba65", "#bf4713", "#9c002f", "#d73d00", "#008080", "#004c4c"]
     colors = {'grey': alphabetClrs[8],
               'light_yellow': clrs[0],
@@ -20,7 +20,16 @@ def define_color_scheme():
               'teal': clrs[4],
               'darkteal': clrs[5]
               }
-    all_clrs = [colors['brighto'], colors['teal'], colors['maroon']] + alphabetClrs[13:]
+    sushi_colors = {'red': '#C0504D',
+                    'orange': '#F79646',
+                    'medSea': '#4BACC6',
+                    'black': '#000000',
+                    'dgreen': '#00B04E',
+                    'lgreen': '#92D050',
+                    'dblue': '#366092',
+                    'lblue': '#95B3D7'}
+   # all_clrs = [colors['brighto'], colors['teal'], colors['maroon']] + alphabetClrs[13:]
+    all_clrs = ['#F79646', '#366092', '#00B04E', '#C0504D', colors['maroon'], colors['teal']] + alphabetClrs
     return colors, alphabetClrs, all_clrs
 
 
@@ -109,7 +118,7 @@ def pca_figure(pcDf, pcX, pcY, pcVarHi, pcVar, pcSym, expVars, colorSeq):
                      height=800, hover_data=expVars, hover_name=pcDf.index)
     fig.update_layout({'paper_bgcolor': 'rgba(0,0,0,0)', 'plot_bgcolor': 'rgba(0,0,0,0)'},
                       autosize=True,
-                      font=dict(size=20))
+                      font=dict(size=16))
     fig.update_traces(marker=dict(size=24,
                                   line=dict(width=2,
                                             color='DarkSlateGrey'), opacity=0.9),

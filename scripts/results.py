@@ -25,6 +25,7 @@ class ResultSchema(pa.SchemaModel):
     contrast: Series[str] = pa.Field(coerce=True)
     library: Series[str] = pa.Field(coerce=True)
 
+
 class ResultDataSet:
     def __init__(self, result_files=(), gene_id='locus_tag'):
         self.kind: str = 'result'
@@ -148,6 +149,7 @@ class ResultDataSet:
             self.kegg_df = self.subset_df[self.subset_df[kegg_id].isin(pathGenes)].copy()
         else:
             self.kegg_df = self.subset_df.copy()
+
 
 class DrawKeggMaps:
     def __init__(self, organism):
