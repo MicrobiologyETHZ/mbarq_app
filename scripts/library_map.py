@@ -36,7 +36,7 @@ class LibraryMap:
         return pd.read_csv(uploaded_map), uploaded_map.name
 
     def _load_library_map(self, df, df_name):
-        df['in CDS'] = df.distance_to_feature == 0
+        df['in CDS'] = df[DISTANCE_COL] == 0
         if 'library' not in df.columns:
             library_name = st.text_input("Change library name?", value=df_name)
             df['library'] = library_name
@@ -68,10 +68,11 @@ class LibraryMap:
             INSERTION_SITE_COL: pa.Column(int, pa.Check(lambda x: x >= 0)),
             BARCODE_COL: pa.Column(str, coerce=True),
             ABUNDANCE_COL: pa.Column(int, pa.Check(lambda x: x >= 0)),
-            DISTANCE_COL: pa.Column(float, nullable=True)
+            DISTANCE_COL: pa.Column(float, nullable=True),
+            'in CDS': pa.Column(bool),
+            'library': pa.Column(str, coerce=True)
         }
         )
-
         try:
             self.lib_map = lib_schema.validate(self.lib_map)
 
@@ -111,8 +112,8 @@ class LibraryMap:
         table1 = table1.set_index('Library')
         table1[f'# of {name_col}s with insertion'] = (self.lib_map[self.lib_map[DISTANCE_COL] == 0]
                                                       .groupby('library')[name_col].nunique())
-        table2 = (self.lib_map.groupby(['library', name_col])
-                  .barcode.count().reset_index().groupby('library')
+        table2 = (self.lib_map.groupby(['library', name_col])[BARCODE_COL].count()
+                  .reset_index().groupby('library')
                   .agg({BARCODE_COL: ['median', 'max']})
                   .reset_index())
         table2.columns = ['Library', 'Median insertions per gene', 'Max insertions per gene']

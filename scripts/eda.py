@@ -35,8 +35,8 @@ class CountDataSet:
         self.sampleData = self.sampleData[self.sampleData.sampleID.isin(samplesFound)]
         self.countData = (self.countData.rename({self.countData.columns[0]: 'barcode',
                                                  self.countData.columns[1]: 'Gene Name'}, axis=1)
-                                        .dropna(subset=['Gene Name'])
-                                        .drop_duplicates())
+                          .dropna(subset=['Gene Name'])
+                          .drop_duplicates())
         self.countData = self.countData[['barcode', 'Gene Name'] + samplesFound]
         if self.countData.empty:
             return False
@@ -47,7 +47,7 @@ class CountDataSet:
         self.countData = self.countData.loc[:, self.countData.sum() > 0]
         self.countData = np.log2((self.countData / self.countData.sum()) * 1000000 + 0.5).reset_index()
 
-    def get_PCs(self, numPCs, numGenes, chooseBy):
+    def get_principal_components(self, numPCs, numGenes, chooseBy):
         """
         :param numPCs:
         :param numGenes:
@@ -76,9 +76,12 @@ class CountDataSet:
         pcDf = pcDf.merge(pcaSd, how="left", left_index=True, right_index=True)
         return pcDf, pcVar
 
+
 #########
 #  APP  #
 #########
+
+
 def app():
     hide_dataframe_row_index = """
                 <style>
@@ -108,8 +111,8 @@ def app():
         - All other columns will be read in as metadata
         Example structure:
         """)
-        test = pd.DataFrame([['sample1',  'treatment'], ['sample2',  'control']],
-                        columns=['sampleID',  'treatment'])
+        test = pd.DataFrame([['sample1', 'treatment'], ['sample2', 'control']],
+                            columns=['sampleID', 'treatment'])
         c2.table(test)
         st.markdown("""
 
@@ -176,12 +179,12 @@ def app():
                 chooseBy = 'variance'
                 numGenes = int(numGenes)
                 numPCs = int(numPCs)
-                #pcDf, pcVar = find_PCs(pcaDf, sampleData, numPCs, numGenes, chooseBy)
-                pcDf, pcVar = cds.get_PCs(numPCs, numGenes, chooseBy)
+                # pcDf, pcVar = find_PCs(pcaDf, sampleData, numPCs, numGenes, chooseBy)
+                pcDf, pcVar = cds.get_principal_components(numPCs, numGenes, chooseBy)
                 missingMeta = " ,".join(list(pcDf[pcDf.isna().any(axis=1)].index))
                 if missingMeta:
                     st.write(f"The following samples have missing_metadata and will not be shown: {missingMeta}")
-                pcDf = pcDf[~pcDf.isna().any(axis=1)]
+                pcDf = pcDf[~pcDf.isna().any(axis=1)]  # todo this should be included in the function
                 pcxLabels = [f'PC{i}' for i in range(1, numPCs + 1)]
                 expVars = [c for c in pcDf.columns if c not in pcxLabels]
                 pcX = c2.selectbox('X-axis component', pcxLabels)
@@ -202,38 +205,35 @@ def app():
             st.write('## Barcode Abundance')
             with st.expander('Show Barcode Abundance'):
                 # Process the dataframe
-                #abDf = countData.dropna()
+                # abDf = countData.dropna()
                 barcode = cds.countData.columns[0]
                 gene_name = cds.countData.columns[1]
 
                 # Get user input
                 c1, c2 = st.columns(2)
-                compareCondition = c1.selectbox('Which conditions to compare?', cds.sampleData.columns)
-                conditionCategories = c1.multiselect(f'Categories of {compareCondition} to display',
-                                            ['All'] + list(cds.sampleData[compareCondition].unique()))
-                filterCondition = c2.selectbox("Filter by", ['No filter'] + list(cds.sampleData.columns))
-                if filterCondition == 'No filter':
-                    filterCategories = []
+                compare_condition = c1.selectbox('Which conditions to compare?', cds.sampleData.columns)
+                condition_categories = c1.multiselect(f'Categories of {compare_condition} to display',
+                                                      ['All'] + list(cds.sampleData[compare_condition].unique()))
+                filter_condition = c2.selectbox("Filter by", ['No filter'] + list(cds.sampleData.columns))
+                if filter_condition == 'No filter':
+                    filter_categories = []
                 else:
-                    filterCategories = c2.multiselect(f'Which category(ies) of {filterCondition} to keep?',
-                                                      list(cds.sampleData[filterCondition].unique()))
-                if 'All' in conditionCategories:
-                    conditionCategories = list(cds.sampleData[compareCondition].unique())
+                    filter_categories = c2.multiselect(f'Which category(ies) of {filter_condition} to keep?',
+                                                       list(cds.sampleData[filter_condition].unique()))
+                if 'All' in condition_categories:
+                    condition_categories = list(cds.sampleData[compare_condition].unique())
                 genes = st.multiselect("Choose gene(s) of interest", cds.countData[gene_name].unique())
-                if len(genes) * len(conditionCategories) > 40:
+                if len(genes) * len(condition_categories) > 40:
                     st.write('Too many genes/categories to display, consider choosing fewer genes')
                 else:
-                    geneDf = cds.countData[cds.countData[gene_name].isin(genes)]
-                    abSampleDf = cds.sampleData[cds.sampleData[compareCondition].isin(conditionCategories)]
-                    if filterCategories:
-                        abSampleDf = abSampleDf[abSampleDf[filterCondition].isin(filterCategories)]
-                    geneDf = (geneDf.melt(id_vars=[barcode, gene_name], value_name='log2CPM', var_name='sampleID')
-                                    .merge(abSampleDf, how='inner', on='sampleID')
-                                    .sort_values(compareCondition))
-                    groupBy = st.radio('Group by', [gene_name, compareCondition])
-                    colorBy = [c for c in [gene_name, compareCondition] if c != groupBy][0]
-                    fig = barcode_abundance(geneDf, groupBy, colorBy, all_clrs)
+                    gene_df = cds.countData[cds.countData[gene_name].isin(genes)]
+                    ab_sample_df = cds.sampleData[cds.sampleData[compare_condition].isin(condition_categories)]
+                    if filter_categories:
+                        ab_sample_df = ab_sample_df[ab_sample_df[filter_condition].isin(filter_categories)]
+                    gene_df = (gene_df.melt(id_vars=[barcode, gene_name], value_name='log2CPM', var_name='sampleID')
+                               .merge(ab_sample_df, how='inner', on='sampleID')
+                               .sort_values(compare_condition))
+                    groupBy = st.radio('Group by', [gene_name, compare_condition])
+                    colorBy = [c for c in [gene_name, compare_condition] if c != groupBy][0]
+                    fig = barcode_abundance(gene_df, groupBy, colorBy, all_clrs)
                     st.plotly_chart(fig, use_container_width=True)
-
-
-

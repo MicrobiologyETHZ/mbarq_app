@@ -12,3 +12,5 @@ reportlab
 pandera
 streamlit-aggrid
 pyaml
+pytest
+hypothesis
