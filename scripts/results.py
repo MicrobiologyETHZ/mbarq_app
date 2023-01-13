@@ -175,9 +175,12 @@ class DrawKeggMaps:
         st.markdown(pdf_display, unsafe_allow_html=True)
 
     def display_kegg_map(self, pathwayName, ko_dict, title):
+        """
+        :
+        """
         pathwayKGML = KGML_parser.read(kegg_get(pathwayName, "kgml"))
         pathGeneNames = [gene.name.split() for gene in pathwayKGML.genes]
-        pathGeneNames = set([gene.split(":")[1] for sublist in pathGeneNames for gene in sublist])
+        pathGeneNames = set([gene.split(":")[1] for sublist in pathGeneNames for gene in sublist]) # todo add optional number parsing
         canvas = KGMLCanvas(pathwayKGML, import_imagemap=True)
         not_found = []
         for element in pathwayKGML.genes:

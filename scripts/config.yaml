@@ -1,0 +1,13 @@
+library_map:
+  fixed_column_names:
+    barcode_col: barcode
+    abundance_col: abundance_in_mapping_library
+    insertion_site_col: insertion_site
+    chr_col: chr
+    distance_col: distance_to_feature
+    strand_col: strand
+    library_col: library
+
+
+
+

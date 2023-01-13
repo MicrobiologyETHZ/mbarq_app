@@ -33,70 +33,40 @@ def define_color_scheme():
     return colors, alphabetClrs, all_clrs
 
 
-def find_PCs(countData, sampleData, numPCs=2, numGenes=None, choose_by='variance'):
-    """
-    :param countData: each column is a sampleID, index is featureID
-    :param sampleData:
-    :param numPCs:
-    :param numGenes:
-    :return:
-    """
-    if countData.columns[0] != 'barcode':
-        st.write('Barcode column not found.')
-        return ()
-    if sampleData.columns[0] != 'sampleID':
-        st.write('sampleID column not found')
-        return ()
-    df = countData.set_index('barcode')
-    sampleData = sampleData.set_index('sampleID').apply(lambda x: x.astype('category'))
-    if numGenes:
-        # calculate var for each, pick numGenes top var across samples -> df
-        if choose_by == 'variance':
-            genes = df.var(axis=1).sort_values(ascending=False).head(int(numGenes)).index
-            df = df.loc[genes].T
-        else:
-            pass
-            # todo implement log2fc selection
-    else:
-        df = countData.T
-    pca = PCA(n_components=numPCs)
-    principalComponents = pca.fit_transform(df)
-    pcs = [f'PC{i}' for i in range(1, numPCs + 1)]
-    pcDf = (pd.DataFrame(data=principalComponents, columns=pcs)
-              .set_index(df.index))
-    pcVar = {pcs[i]: round(pca.explained_variance_ratio_[i] * 100, 2) for i in range(0, numPCs)}
-    pcDf = pcDf.merge(sampleData, how="left", left_index=True, right_index=True)
-    return pcDf, pcVar
-
-
-def graph_library_map(map_df, attr_names, chr_col='chr', color_by_cols=('in CDS', 'library')):
-    attr_names = set(attr_names)
-    colors, alphabetClrs, all_clrs = define_color_scheme()
-    graph_type = st.radio("Choose graph", ['Coverage Histogram', 'Individual Insertions'])
-    c1, c2, c3 = st.columns(3)
-    seqid = c1.selectbox('Choose sequence to display', map_df[chr_col].unique())
-    df_to_show = map_df[map_df[chr_col] == seqid].sort_values("insertion_site")
-    if graph_type == 'Individual Insertions':
-        colorby = c2.selectbox('Color by', color_by_cols)
-        fig = px.scatter(df_to_show, x='insertion_site', y='abundance_in_mapping_library', color=colorby, log_y=True,
-                         height=600,
-                         color_discrete_sequence=all_clrs,
-                         hover_data=attr_names, template='plotly_white',
-                         labels={'insertion_site': 'Position, bp', 'abundance_in_mapping_library': 'Read Counts'})
-        fig.update_traces(marker=dict(size=8, line=dict(width=2, color='DarkSlateGrey')),
-                          selector=dict(mode='markers'), opacity=0.9)
-
-    elif graph_type == 'Coverage Histogram':
-        num_bins = c2.number_input('Number of bins', value=100)
-        hist_col = c3.text_input('Color hex', value=colors['teal'])
-        fig = px.histogram(df_to_show, x='insertion_site', nbins=int(num_bins),
-                           labels={'insertion_site': 'Position, bp'}, color_discrete_sequence=[hist_col])
-        fig.update_layout(bargap=0.1)
-
-    fig.update_layout({'paper_bgcolor': 'rgba(0,0,0,0)', 'plot_bgcolor': 'rgba(0,0,0,0)'},
-                      autosize=True,
-                      font=dict(size=24))
-    st.plotly_chart(fig, use_container_width=True)
+# def find_PCs(countData, sampleData, numPCs=2, numGenes=None, choose_by='variance'):
+#     """
+#     :param countData: each column is a sampleID, index is featureID
+#     :param sampleData:
+#     :param numPCs:
+#     :param numGenes:
+#     :return:
+#     """
+#     if countData.columns[0] != 'barcode':
+#         st.write('Barcode column not found.')
+#         return ()
+#     if sampleData.columns[0] != 'sampleID':
+#         st.write('sampleID column not found')
+#         return ()
+#     df = countData.set_index('barcode')
+#     sampleData = sampleData.set_index('sampleID').apply(lambda x: x.astype('category'))
+#     if numGenes:
+#         # calculate var for each, pick numGenes top var across samples -> df
+#         if choose_by == 'variance':
+#             genes = df.var(axis=1).sort_values(ascending=False).head(int(numGenes)).index
+#             df = df.loc[genes].T
+#         else:
+#             pass
+#             # todo implement log2fc selection
+#     else:
+#         df = countData.T
+#     pca = PCA(n_components=numPCs)
+#     principalComponents = pca.fit_transform(df)
+#     pcs = [f'PC{i}' for i in range(1, numPCs + 1)]
+#     pcDf = (pd.DataFrame(data=principalComponents, columns=pcs)
+#               .set_index(df.index))
+#     pcVar = {pcs[i]: round(pca.explained_variance_ratio_[i] * 100, 2) for i in range(0, numPCs)}
+#     pcDf = pcDf.merge(sampleData, how="left", left_index=True, right_index=True)
+#     return pcDf, pcVar
 
 
 def barcode_abundance(geneDf, groupBy, colorBy, colorSeq):

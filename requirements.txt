@@ -11,3 +11,4 @@ biopython == 1.79
 reportlab
 pandera
 streamlit-aggrid
+pyaml
