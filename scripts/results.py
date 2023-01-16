@@ -224,6 +224,17 @@ def convert_df(df):
 #############
 
 def app():
+    st.markdown(""" # Differential Abundance """)
+
+    # with st.expander('How this works: '):
+    #     st.markdown("""
+    #
+    #     ### ADD TEXT HERE
+    #
+    #     - ADD TEXT HERE
+    #     #
+    #     """)
+
     colors, alphabetClrs, all_clrs = define_color_scheme()
     with st.container():
         st.subheader('Load the data file')

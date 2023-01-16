@@ -5,7 +5,7 @@ import numpy as np
 import pandera as pa
 from pandera.typing import Index, DataFrame, Series
 from pandera.errors import SchemaError
-from scripts.graphs import pca_figure, barcode_abundance, define_color_scheme
+from scripts.graphs import pca_figure, barcode_abundance_box, barcode_abundance_violin, define_color_scheme
 
 
 @st.cache
@@ -235,5 +235,5 @@ def app():
                                .sort_values(compare_condition))
                     groupBy = st.radio('Group by', [gene_name, compare_condition])
                     colorBy = [c for c in [gene_name, compare_condition] if c != groupBy][0]
-                    fig = barcode_abundance(gene_df, groupBy, colorBy, all_clrs)
+                    fig = barcode_abundance_box(gene_df, groupBy, colorBy, all_clrs)
                     st.plotly_chart(fig, use_container_width=True)
