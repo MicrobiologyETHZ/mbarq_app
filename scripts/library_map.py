@@ -182,10 +182,16 @@ def app():
             if graph_type == 'Individual Insertions':
                 color_by_choice = c2.selectbox('Color by', lm.color_by_cols)
                 fig = lm.graph_insertions(chr_col_choice, color_by_choice, all_clrs)
+
             else:
-                num_bins = c2.number_input('Number of bins', value=100)
-                hist_col = c3.text_input('Color hex', value=colors['teal'])
-                fig = lm.graph_coverage_hist(chr_col_choice, num_bins, hist_col)
+                try:
+                    num_bins = c2.number_input('Number of bins', value=100)
+                    hist_col = c3.text_input('Color (hex, rgb, hsl, hsv or color name)', value=colors['teal'])
+                    fig = lm.graph_coverage_hist(chr_col_choice, num_bins, hist_col)
+                except ValueError:
+                    st.write("Please enter a valid color. The following formats are accepted: hex, rgb, hsl, hsv or color name")
+                    return
+
             st.plotly_chart(fig, use_container_width=True)
 
         # Generate summary stats for the libraries
