@@ -70,12 +70,9 @@ def define_color_scheme():
 
 
 def barcode_abundance_box(geneDf, groupBy, colorBy, colorSeq):
-        #fig = px.box(geneDf, x=groupBy, y='log2CPM', color=colorBy,
-        #             hover_data=geneDf.columns, points='all',
-        #             color_discrete_sequence=colorSeq,)
-        fig = px.violin(geneDf, x=groupBy, y='log2CPM', color=colorBy,
+        fig = px.box(geneDf, x=groupBy, y='log2CPM', color=colorBy,
                      hover_data=geneDf.columns, points='all',
-                     color_discrete_sequence=colorSeq, )
+                     color_discrete_sequence=colorSeq,)
         fig.update_layout({'paper_bgcolor': 'rgba(0,0,0,0)', 'plot_bgcolor': 'rgba(0,0,0,0)'}, autosize=True,
                           font=dict(size=16))
         fig.update_yaxes(showgrid=True, gridwidth=0.5, gridcolor='LightGrey')

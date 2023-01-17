@@ -233,7 +233,19 @@ def app():
                     gene_df = (gene_df.melt(id_vars=[barcode, gene_name], value_name='log2CPM', var_name='sampleID')
                                .merge(ab_sample_df, how='inner', on='sampleID')
                                .sort_values(compare_condition))
-                    groupBy = st.radio('Group by', [gene_name, compare_condition])
+
+                    col1, col2 = st.columns(2)
+                    groupBy = col1.radio('Group by', [gene_name, compare_condition])
                     colorBy = [c for c in [gene_name, compare_condition] if c != groupBy][0]
-                    fig = barcode_abundance_box(gene_df, groupBy, colorBy, all_clrs)
+
+                    # Choose Plot Type
+                    box = "Box"
+                    violin = "Violin"
+                    plotType = col2.radio('Plot Type', (box, violin))
+                    if plotType == box:
+                        fig = barcode_abundance_box(gene_df, groupBy, colorBy, all_clrs)
+                    if plotType == violin:
+                        fig = barcode_abundance_violin(gene_df, groupBy, colorBy, all_clrs)
+
                     st.plotly_chart(fig, use_container_width=True)
+
