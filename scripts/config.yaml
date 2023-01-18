@@ -7,6 +7,9 @@ library_map:
     distance_col: distance_to_feature
     strand_col: strand
     library_col: library
+eda:
+  fixed_column_names:
+
 
 
 

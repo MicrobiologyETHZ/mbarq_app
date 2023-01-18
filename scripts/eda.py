@@ -173,7 +173,7 @@ def app():
                 st.write('### PCA Options')
                 c1, c2, c3, c4 = st.columns(4)
                 numPCs = c1.number_input("Select number of Principal Components", min_value=2, max_value=50, value=10)
-                numGenes = c1.number_input("Number of genes to use", min_value=int(numPCs),
+                numGenes = c2.number_input("Number of genes to use", min_value=int(numPCs),
                                            value=int(min(250, cds.countData.shape[0])),
                                            max_value=int(cds.countData.shape[0]))
                 chooseBy = 'variance'
@@ -187,7 +187,7 @@ def app():
                 pcDf = pcDf[~pcDf.isna().any(axis=1)]  # todo this should be included in the function
                 pcxLabels = [f'PC{i}' for i in range(1, numPCs + 1)]
                 expVars = [c for c in pcDf.columns if c not in pcxLabels]
-                pcX = c2.selectbox('X-axis component', pcxLabels)
+                pcX = c1.selectbox('X-axis component', pcxLabels)
                 pcY = c2.selectbox('Y-axis component', [pc for pc in pcxLabels if pc != pcX])
                 pcVarHi = c3.radio('Variable to highlight', expVars)
                 pcSym = c4.radio('Variable to show as symbol', [None] + expVars)

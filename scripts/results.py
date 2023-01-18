@@ -174,12 +174,16 @@ class DrawKeggMaps:
         # Displaying File
         st.markdown(pdf_display, unsafe_allow_html=True)
 
-    def display_kegg_map(self, pathwayName, ko_dict, title):
+    def display_kegg_map(self, pathwayName, ko_dict, title, numeric=False):
         """
         :
         """
         pathwayKGML = KGML_parser.read(kegg_get(pathwayName, "kgml"))
+
+
         pathGeneNames = [gene.name.split() for gene in pathwayKGML.genes]
+        # todo add gene parsing function
+        # pathGeneNames = set([extract_gene_name(gene, numeric=numeric) for sublist in pathGeneNames for gene in sublist])
         pathGeneNames = set([gene.split(":")[1] for sublist in pathGeneNames for gene in sublist]) # todo add optional number parsing
         canvas = KGMLCanvas(pathwayKGML, import_imagemap=True)
         not_found = []
@@ -306,8 +310,14 @@ def app():
 
             pathwayDescription = st.selectbox('Select KEGG Pathway to explore', pathwayMap.keys())
             pathwayName = pathwayMap[pathwayDescription]
+
+            # todo add checkbox (by default unchecked) asking user whether to display locus # only
+            # if checkbox is checked, numeric = True, otherwise numeric = False
+            #locus = st.checkbox("Locus Number")
+
             with st.spinner(f'Loading KEGG map for {pathwayName}...'):
-                pathwayGenes = km.display_kegg_map(pathwayName, ko_dict, f"{pathwayName}-{'-'.join(contrast_to_show)}")
+                pathwayGenes = km.display_kegg_map(pathwayName, ko_dict,
+                                                   f"{pathwayName}-{'-'.join(contrast_to_show)}") # add numeric
         else:
             st.write("KEGG maps are unavailable.")
             kegg_id = gene_id
