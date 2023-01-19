@@ -16,7 +16,12 @@ import pandera as pa
 from pandera.typing import Index, DataFrame, Series
 from pandera.errors import SchemaError
 from matplotlib import colors
+import regex as re
 
+
+## Security issue --> remove if you are pushing!
+import ssl
+ssl._create_default_https_context = ssl._create_unverified_context
 
 class ResultSchema(pa.SchemaModel):
     LFC: Series[float] = pa.Field(coerce=True)
@@ -150,6 +155,57 @@ class ResultDataSet:
         else:
             self.kegg_df = self.subset_df.copy()
 
+def parse_number_out(gene_name: str, numbers_only: bool):
+    """
+    :param gene_name: KEGG gene name in the following format: organism:gene_name,
+            examples: eco:b3451 sey:SL1344_1569 ece:Z876
+    :param numbers_only: Whether to return full gene name or numbers only
+
+    :return: Parsed gene name
+    :rtype: str
+
+    """
+    # searches for a semi colon in the string --> if not present return the whole string
+    if not ":" in gene_name:
+        print("Warning: not a gene name: ", gene_name)
+        return gene_name
+
+    # split the string at ":"
+    splitted = re.split(r"\:", gene_name)
+
+    string = splitted[1]
+
+    if numbers_only == False:
+        # return part after ":"
+        return string
+
+    if numbers_only:
+        # check if it contains a number
+        containsnum = bool(re.search(r"\d", string))
+
+        if containsnum == False:
+            # if not containsnum:
+            return string
+
+        if containsnum:
+            # match = re.findall(r"(?<=[a-zA-Z_])\d+", string)
+            # positive lookbehind (?<=)
+            # searches from behind --> if match takes the part
+            # after the match
+            # \D means "not a digit"
+            # \d matches a digit (equivalent to [0-9])
+            # and matches the previous token between one and unlimited times,
+            # as many times as possible, giving back as needed (greedy)
+            match = re.findall(r"(?<=[\D])\d+", string)
+
+            if match:
+                # takes the last match, because a list is provided
+                number = match[-1]
+
+                if not number.isnumeric():
+                    print("Error: Not a Number")
+
+                return number
 
 class DrawKeggMaps:
     def __init__(self, organism):
@@ -174,7 +230,8 @@ class DrawKeggMaps:
         # Displaying File
         st.markdown(pdf_display, unsafe_allow_html=True)
 
-    def display_kegg_map(self, pathwayName, ko_dict, title, numeric=False):
+
+    def display_kegg_map(self, pathwayName, ko_dict, title, locus, numeric=False):
         """
         :
         """
@@ -183,8 +240,12 @@ class DrawKeggMaps:
 
         pathGeneNames = [gene.name.split() for gene in pathwayKGML.genes]
         # todo add gene parsing function
-        # pathGeneNames = set([extract_gene_name(gene, numeric=numeric) for sublist in pathGeneNames for gene in sublist])
-        pathGeneNames = set([gene.split(":")[1] for sublist in pathGeneNames for gene in sublist]) # todo add optional number parsing
+        # working on
+
+        pathGeneNames = set([parse_number_out(gene, locus) for sublist in pathGeneNames for gene in sublist])
+        st.write(pathGeneNames)
+        #pathGeneNames = set([gene.split(":")[1] for sublist in pathGeneNames for gene in sublist])
+
         canvas = KGMLCanvas(pathwayKGML, import_imagemap=True)
         not_found = []
         for element in pathwayKGML.genes:
@@ -311,13 +372,14 @@ def app():
             pathwayDescription = st.selectbox('Select KEGG Pathway to explore', pathwayMap.keys())
             pathwayName = pathwayMap[pathwayDescription]
 
-            # todo add checkbox (by default unchecked) asking user whether to display locus # only
+            # checkbox (by default unchecked) asking user whether to display locus # only
             # if checkbox is checked, numeric = True, otherwise numeric = False
-            #locus = st.checkbox("Locus Number")
+            # working on
+            locus = st.checkbox("Locus Number")
 
             with st.spinner(f'Loading KEGG map for {pathwayName}...'):
                 pathwayGenes = km.display_kegg_map(pathwayName, ko_dict,
-                                                   f"{pathwayName}-{'-'.join(contrast_to_show)}") # add numeric
+                                                   f"{pathwayName}-{'-'.join(contrast_to_show)}", locus) # add numeric
         else:
             st.write("KEGG maps are unavailable.")
             kegg_id = gene_id

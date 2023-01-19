@@ -13,3 +13,4 @@ pandera
 pyaml
 pytest
 hypothesis
+regex
