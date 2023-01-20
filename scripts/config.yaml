@@ -9,6 +9,12 @@ library_map:
     library_col: library
 eda:
   fixed_column_names:
+    barcode_col: barcode
+    genename_col: gene_name
+    sampleID_col: sample_ID
+    name_col: name
+
+
 
 
 

@@ -19,9 +19,10 @@ from matplotlib import colors
 import re
 
 # What is this for?
+# todo solve this issue (happens when you open kegg maps --> SSL certificate problem)
  ## Security issue --> remove if you are pushing!
-# import ssl
-# ssl._create_default_https_context = ssl._create_unverified_context
+#import ssl
+#ssl._create_default_https_context = ssl._create_unverified_context
 
 class ResultSchema(pa.SchemaModel):
     LFC: Series[float] = pa.Field(coerce=True)

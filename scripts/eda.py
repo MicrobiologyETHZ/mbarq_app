@@ -6,7 +6,18 @@ import pandera as pa
 from pandera.typing import Index, DataFrame, Series
 from pandera.errors import SchemaError
 from scripts.graphs import pca_figure, barcode_abundance_box, barcode_abundance_violin, define_color_scheme
+import yaml
 
+with open('scripts/config.yaml', 'r') as cf:
+    config = yaml.load(cf, Loader=yaml.SafeLoader)['eda']
+
+# Load column naming schema
+col_name_config = config['fixed_column_names']
+FIXED_COLUMN_NAMES = list(col_name_config.values())
+BARCODE_COL = col_name_config['barcode_col']
+GENENAME_COL = col_name_config['genename_col']
+SAMPLEID_COL = col_name_config['sampleID_col']
+NAME_COL = col_name_config['name_col']
 
 @st.cache
 def convert_df(df):
