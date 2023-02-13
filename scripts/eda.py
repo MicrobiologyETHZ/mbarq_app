@@ -5,8 +5,19 @@ import numpy as np
 import pandera as pa
 from pandera.typing import Index, DataFrame, Series
 from pandera.errors import SchemaError
-from scripts.graphs import pca_figure, barcode_abundance, define_color_scheme
+from scripts.graphs import pca_figure, barcode_abundance_box, barcode_abundance_violin, define_color_scheme
+import yaml
 
+with open('scripts/config.yaml', 'r') as cf:
+    config = yaml.load(cf, Loader=yaml.SafeLoader)['eda']
+
+# Load column naming schema
+col_name_config = config['fixed_column_names']
+FIXED_COLUMN_NAMES = list(col_name_config.values())
+BARCODE_COL = col_name_config['barcode_col']
+GENENAME_COL = col_name_config['genename_col']
+SAMPLEID_COL = col_name_config['sampleID_col']
+NAME_COL = col_name_config['name_col']
 
 @st.cache
 def convert_df(df):
@@ -173,7 +184,7 @@ def app():
                 st.write('### PCA Options')
                 c1, c2, c3, c4 = st.columns(4)
                 numPCs = c1.number_input("Select number of Principal Components", min_value=2, max_value=50, value=10)
-                numGenes = c1.number_input("Number of genes to use", min_value=int(numPCs),
+                numGenes = c2.number_input("Number of genes to use", min_value=int(numPCs),
                                            value=int(min(250, cds.countData.shape[0])),
                                            max_value=int(cds.countData.shape[0]))
                 chooseBy = 'variance'
@@ -187,7 +198,7 @@ def app():
                 pcDf = pcDf[~pcDf.isna().any(axis=1)]  # todo this should be included in the function
                 pcxLabels = [f'PC{i}' for i in range(1, numPCs + 1)]
                 expVars = [c for c in pcDf.columns if c not in pcxLabels]
-                pcX = c2.selectbox('X-axis component', pcxLabels)
+                pcX = c1.selectbox('X-axis component', pcxLabels)
                 pcY = c2.selectbox('Y-axis component', [pc for pc in pcxLabels if pc != pcX])
                 pcVarHi = c3.radio('Variable to highlight', expVars)
                 pcSym = c4.radio('Variable to show as symbol', [None] + expVars)
@@ -233,7 +244,19 @@ def app():
                     gene_df = (gene_df.melt(id_vars=[barcode, gene_name], value_name='log2CPM', var_name='sampleID')
                                .merge(ab_sample_df, how='inner', on='sampleID')
                                .sort_values(compare_condition))
-                    groupBy = st.radio('Group by', [gene_name, compare_condition])
+
+                    col1, col2 = st.columns(2)
+                    groupBy = col1.radio('Group by', [gene_name, compare_condition])
                     colorBy = [c for c in [gene_name, compare_condition] if c != groupBy][0]
-                    fig = barcode_abundance(gene_df, groupBy, colorBy, all_clrs)
+
+                    # Choose Plot Type
+                    box = "Box"
+                    violin = "Violin"
+                    plotType = col2.radio('Plot Type', (box, violin))
+                    if plotType == box:
+                        fig = barcode_abundance_box(gene_df, groupBy, colorBy, all_clrs)
+                    if plotType == violin:
+                        fig = barcode_abundance_violin(gene_df, groupBy, colorBy, all_clrs)
+
                     st.plotly_chart(fig, use_container_width=True)
+

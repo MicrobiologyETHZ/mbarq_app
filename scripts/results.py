@@ -16,7 +16,13 @@ import pandera as pa
 from pandera.typing import Index, DataFrame, Series
 from pandera.errors import SchemaError
 from matplotlib import colors
+import re
 
+# What is this for?
+# todo solve this issue (happens when you open kegg maps --> SSL certificate problem)
+ ## Security issue --> remove if you are pushing!
+#import ssl
+#ssl._create_default_https_context = ssl._create_unverified_context
 
 class ResultSchema(pa.SchemaModel):
     LFC: Series[float] = pa.Field(coerce=True)
@@ -124,7 +130,7 @@ class ResultDataSet:
             st.markdown(f"[Link to STRING network]({network_url})")
             sleep(1)
 
-    def get_gene_to_kegg_map(self, kegg_id):
+    def get_gene_to_kegg_map(self, kegg_id, numbers_only=True):
         if self.subset_df.contrast.nunique() > 1:
             st.write("⚠️WARNING: Multiple contrasts selected! The map will show median LFC across the selected contrasts")
 
@@ -134,8 +140,10 @@ class ResultDataSet:
 
         self.subset_df = (self.subset_df.merge(hitSummary, on=kegg_id, how='outer'))
         self.subset_df['hitStar'] = self.subset_df['hitSum'].apply(lambda x: '*' if x > 0 else '')
-        self.subset_df['NameForMap'] = self.subset_df[self.gene_id] + self.subset_df['hitStar'] + \
+        self.subset_df['NameForMap'] = self.subset_df[self.gene_id].apply(parse_number_out, numbers_only=numbers_only)
+        self.subset_df['NameForMap'] = self.subset_df['NameForMap'] + self.subset_df['hitStar'] + \
                                        "(" + self.subset_df['LFC_median'].round(2).astype(str) + ")"
+
         data_short = self.subset_df[set([self.gene_id, kegg_id, 'NameForMap', 'LFC_median'])].drop_duplicates().dropna()
         norm = matplotlib.colors.Normalize(vmin=-6, vmax=6, clip=True)
         mapper = matplotlib.cm.ScalarMappable(norm=norm, cmap=sns.diverging_palette(220, 20, as_cmap=True))
@@ -150,6 +158,58 @@ class ResultDataSet:
         else:
             self.kegg_df = self.subset_df.copy()
 
+
+def parse_number_out(gene_name: str, numbers_only: bool) -> str:
+    """
+    :param gene_name: KEGG gene name in the following format: organism:gene_name,
+            examples: eco:b3451 sey:SL1344_1569 ece:Z876
+    :param numbers_only: Whether to return full gene name or numbers only
+
+    :return: Parsed gene name
+    :rtype: str
+
+    """
+    # searches for a semi colon in the string --> if not present return the whole string
+    # if not ":" in gene_name:
+    #     print("Warning: not a gene name: ", gene_name)
+    #     return gene_name
+    #
+    # # split the string at ":"
+    # splitted = re.split(r"\:", gene_name)
+    #
+    # string = splitted[1]
+
+    if numbers_only == False:
+        # return part after ":"
+        return gene_name
+
+    if numbers_only:
+        # check if it contains a number
+        containsnum = bool(re.search(r"\d", gene_name))
+
+        if containsnum == False:
+            # if not containsnum:
+            return gene_name
+
+        if containsnum:
+            # match = re.findall(r"(?<=[a-zA-Z_])\d+", string)
+            # positive lookbehind (?<=)
+            # searches from behind --> if match takes the part
+            # after the match
+            # \D means "not a digit"
+            # \d matches a digit (equivalent to [0-9])
+            # and matches the previous token between one and unlimited times,
+            # as many times as possible, giving back as needed (greedy)
+            match = re.findall(r"(?<=[\D])\d+", gene_name)
+
+            if match:
+                # takes the last match, because a list is provided
+                number = match[-1]
+
+                if not number.isnumeric():
+                    # Instead of print using streamlit to display a warning
+                    st.warning("Error: Not a Number")
+                return number
 
 class DrawKeggMaps:
     def __init__(self, organism):
@@ -174,13 +234,19 @@ class DrawKeggMaps:
         # Displaying File
         st.markdown(pdf_display, unsafe_allow_html=True)
 
-    def display_kegg_map(self, pathwayName, ko_dict, title):
+
+    def display_kegg_map(self, pathwayName, ko_dict, title, locus, numeric=False):
         """
         :
         """
         pathwayKGML = KGML_parser.read(kegg_get(pathwayName, "kgml"))
         pathGeneNames = [gene.name.split() for gene in pathwayKGML.genes]
-        pathGeneNames = set([gene.split(":")[1] for sublist in pathGeneNames for gene in sublist]) # todo add optional number parsing
+        # todo add gene parsing function
+        # working on
+
+        #pathGeneNames = set([parse_number_out(gene, locus) for sublist in pathGeneNames for gene in sublist])
+
+        pathGeneNames = set([gene.split(":")[1] for sublist in pathGeneNames for gene in sublist])
         canvas = KGMLCanvas(pathwayKGML, import_imagemap=True)
         not_found = []
         for element in pathwayKGML.genes:
@@ -224,6 +290,17 @@ def convert_df(df):
 #############
 
 def app():
+    st.markdown(""" # Differential Abundance """)
+
+    # with st.expander('How this works: '):
+    #     st.markdown("""
+    #
+    #     ### ADD TEXT HERE
+    #
+    #     - ADD TEXT HERE
+    #     #
+    #     """)
+
     colors, alphabetClrs, all_clrs = define_color_scheme()
     with st.container():
         st.subheader('Load the data file')
@@ -288,15 +365,22 @@ def app():
             except ValueError:
                 kix = 0
             kegg_id = kegg_col.selectbox('Column corresponding to KEGG Entry names (usually locus_tag)', options=kegg_options, index=kix)
-            ko_dict = rds.get_gene_to_kegg_map(kegg_id)
+
             km = DrawKeggMaps(organismId)
             with st.spinner(f"Loading the list of all KEGG pathways for {organismId}"):
                 pathwayMap = km.get_org_kegg_pathways()
 
             pathwayDescription = st.selectbox('Select KEGG Pathway to explore', pathwayMap.keys())
             pathwayName = pathwayMap[pathwayDescription]
+
+            # checkbox (by default unchecked) asking user whether to display locus # only
+            # if checkbox is checked, numeric = True, otherwise numeric = False
+            # working on
+            locus = st.checkbox("Locus Number")
+            ko_dict = rds.get_gene_to_kegg_map(kegg_id, locus)
             with st.spinner(f'Loading KEGG map for {pathwayName}...'):
-                pathwayGenes = km.display_kegg_map(pathwayName, ko_dict, f"{pathwayName}-{'-'.join(contrast_to_show)}")
+                pathwayGenes = km.display_kegg_map(pathwayName, ko_dict,
+                                                   f"{pathwayName}-{'-'.join(contrast_to_show)}", locus) # add numeric
         else:
             st.write("KEGG maps are unavailable.")
             kegg_id = gene_id
