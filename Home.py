@@ -1,26 +1,81 @@
 import streamlit as st
 from PIL import Image
-from scripts import library_map, eda, results
-import base64
+from scripts import eda, results
+from pages import library_map
+import pandas as pd
+
 st.set_page_config(page_title="mBARq App", layout='wide',
                    page_icon=Image.open("images/image.png")
                     )
 st.image("images/mbarq-logo.png")
 
 
-def home_page():
-    url = "https://github.com/MicrobiologyETHZ/mbarq"
+class LoadDataSet:
 
+    def __init(self, kind='map'):
+        self.df = pd.DataFrame()
+
+
+
+
+
+
+
+def home_page():
+
+
+    # Sidebar setup
+    st.sidebar.title('Data Upload')
+    map_file = st.sidebar.file_uploader('Upload a mutant library map file', key='map')
+    count_file = st.sidebar.file_uploader('Upload a file containing earthquake data', key='cnt')
+    sample_file = st.sidebar.file_uploader('Upload a file containing earthquake data', key='sample')
+    results_file = st.sidebar.file_uploader('Upload a file containing earthquake data', key='res')
+
+    if map_file is not None:
+        map_df = pd.read_csv(map_file)
+        st.session_state['map_file'] = map_file
+        st.session_state['map_df'] = map_df
+
+    if count_file is not None:
+        count_df = pd.read_csv(count_file)
+        st.session_state['count_file'] = count_file
+        st.session_state['count_df'] = count_df
+
+    if sample_file is not None:
+        sample_df = pd.read_csv(sample_file)
+        st.session_state['sample_file'] = sample_file
+        st.session_state['sample_df'] = sample_df
+
+    if results_file is not None:
+        results_df = pd.read_csv(results_file)
+        st.session_state['results_file'] = results_file
+        st.session_state['results_df'] = results_df
+
+
+
+    if 'map_file' in st.session_state.keys():
+        st.sidebar.write(f'Currently loaded libary map: {st.session_state["map_file"].name}')
+
+
+
+    # Check if file has been uploaded
+
+
+
+
+
+
+    url = "https://github.com/MicrobiologyETHZ/mbarq"
+    docs_url = "https://mbarq.readthedocs.io/en/latest/"
 
     st.markdown(f""" 
     
+    #
     
     
-  #
-    
-    This app allows exploration of data processed and analyzed with [mBARq tool]({url}). It is currently in beta!
+  ##### Transposon mutagenesis is a powerful technique that allows identification of bacterial fitness factors under different environmental conditions. Recently, a number of studies have used barcoded transposon mutant libraries to increase the throughput of the experiments. mBARq allows easy processing and analysis of barcoded mutant libraries for any transposon construct. To learn more about analysis of barcoded sequencing data using mBARq,  please read [the documentation]({docs_url}). This app allows exploration of data analyzed with [mBARq tool]({url}).
 
-    ## Tabs:
+    ## Pages:
 
     1. ### 📍 Library Map: 
 
@@ -46,13 +101,13 @@ def home_page():
 
     """)
 
-home_tab, lib_tab, eda_tab, dea_tab = st.tabs(["  🏠 Home   ", "   📍 Library Map   ",
+home_tab, eda_tab, dea_tab = st.tabs(["Home",
                                "   📈 Exploratory Analysis   ", '   📊 Differential Abundance'])
 with home_tab:
     home_page()
 
-with lib_tab:
-    library_map.app()
+# with lib_tab:
+#     library_map.app()
 
 with eda_tab:
     eda.app()

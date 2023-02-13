@@ -1,6 +1,5 @@
 import pandera as pa
 import yaml
-from scripts.library_map import LibraryMap
 
 with open('scripts/config.yaml', 'r') as cf:
     config = yaml.load(cf, Loader=yaml.SafeLoader)['library_map']
