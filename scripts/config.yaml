@@ -14,7 +14,13 @@ eda:
     sampleID_col: sample_ID
     name_col: name
 
-
+results:
+  fixed_column_names:
+    lfc_col: LFC
+    fdr_col: neg_selection_fdr
+    fdr_col2: pos_selection_fdr
+    contrast_col: contrast
+    library_col: library
 
 
 

@@ -24,13 +24,6 @@ import re
 #import ssl
 #ssl._create_default_https_context = ssl._create_unverified_context
 
-class ResultSchema(pa.SchemaModel):
-    LFC: Series[float] = pa.Field(coerce=True)
-    neg_selection_fdr: Series[float] = pa.Field(coerce=True)
-    pos_selection_fdr: Series[float] = pa.Field(coerce=True)
-    contrast: Series[str] = pa.Field(coerce=True)
-    library: Series[str] = pa.Field(coerce=True)
-
 
 class ResultDataSet:
     def __init__(self, result_files=(), gene_id='locus_tag'):
