@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import List
+from typing import List, Union
 import pandas as pd
 import pandera as pa
 import plotly.express as px
@@ -8,6 +8,40 @@ import yaml
 from pandera.errors import SchemaError
 from scripts.graphs import define_color_scheme
 import numpy as np
+
+from Bio.KEGG.REST import *
+from Bio.KEGG.KGML import KGML_parser
+from Bio.Graphics.KGML_vis import KGMLCanvas
+
+import base64
+import matplotlib
+import seaborn as sns
+
+import re
+
+def define_color_scheme():
+    alphabetClrs = px.colors.qualitative.Dark24
+    clrs = ["#f7ba65", "#bf4713", "#9c002f", "#d73d00", "#008080", "#004c4c"]
+    colors = {'grey': "#E2E2E2",
+              'light_yellow': clrs[0],
+              'darko': clrs[1],
+              'maroon': clrs[2],
+              'brighto': clrs[3],
+              'teal': clrs[4],
+              'darkteal': clrs[5]
+              }
+    sushi_colors = {'red': '#C0504D',
+                    'orange': '#F79646',
+                    'medSea': '#4BACC6',
+                    'black': '#000000',
+                    'dgreen': '#00B04E',
+                    'lgreen': '#92D050',
+                    'dblue': '#366092',
+                    'lblue': '#95B3D7'}
+   # all_clrs = [colors['brighto'], colors['teal'], colors['maroon']] + alphabetClrs[13:]
+    all_clrs = ['#F79646', '#366092', '#00B04E', '#C0504D', colors['maroon'], colors['teal']] + alphabetClrs
+    return colors, alphabetClrs, sushi_colors, all_clrs
+
 
 class LibraryMap:
 
@@ -119,7 +153,7 @@ class LibraryMap:
 
 
 class ResultDataSet:
-    def __init__(self, result_files=(), config_file = "scripts/config.yaml",
+    def __init__(self, result_files=(), config_file="scripts/config.yaml",
                  gene_id='locus_tag'):
         self.result_files: str = result_files
         self.gene_id: str = gene_id
@@ -134,8 +168,9 @@ class ResultDataSet:
         self.fdr_col2 = col_name_config['fdr_col2']
         self.contrast_col = col_name_config['contrast_col']
         self.library_col = col_name_config['library_col']
-       # self.string_df = pd.DataFrame()
-       # self.kegg_df = pd.DataFrame()
+        self.string_df = pd.DataFrame()
+        self.kegg_df = pd.DataFrame()
+        self.colors, self.alphabetClrs, self.sushi_colors, self.all_clrs = define_color_scheme()
 
     def load_results(self):
         results_df_list = []
@@ -143,7 +178,7 @@ class ResultDataSet:
             st.write(f"Processing {uploaded_result.name}")
             df = pd.read_csv(uploaded_result)
             if 'library' not in df.columns:
-                library_name = st.text_input("Add library name?", value=uploaded_result.name)
+                library_name = st.text_input("Add experiment name", value=uploaded_result.name.split("_rra")[0])
                 df['library'] = library_name
             if self.gene_id not in df.columns:
                 st.warning(f""" No {self.gene_id} column found. Using {df.columns[0]} as gene names to display""")
@@ -197,7 +232,202 @@ class ResultDataSet:
 
             self.results_df = self.results_df.merge(df_grouped, on=[self.gene_id, self.contrast_col], how='left')
 
+    def graph_by_rank(self, contrast=(), kegg=False):
+        rank_df = self.kegg_df if kegg else self.results_df
+        if contrast:
+            rank_df = rank_df[rank_df[self.contrast_col].isin(contrast)]
+        rank_df = (rank_df[[self.gene_id, self.contrast_col, 'LFC_median', 'hit', 'fdr']].drop_duplicates()
+                   .sort_values('LFC_median')
+                   .reset_index()
+                   .reset_index()
+                   .rename({'level_0': 'ranking'}, axis=1)
+                   .sort_values('ranking'))
 
+        hover_dict = {self.gene_id:True, self.contrast_col: True, 'LFC_median': True, 'fdr': True, 'ranking': False}
+
+        fig = px.scatter(rank_df, x='ranking', y='LFC_median', color='hit', symbol=self.contrast_col,
+                         height=500,
+                         color_discrete_map={
+                             True: self.colors['darko'],
+                             False: self.colors['grey']},
+                         hover_name=self.gene_id,
+                         hover_data=hover_dict,
+                         labels={"ranking": '', 'LFC_median': 'LFC'}
+                         )
+        fig.add_hline(y=0, line_width=2, line_dash="dash", line_color="grey")
+        fig.update_xaxes(showticklabels=False)
+        fig.update_layout({'paper_bgcolor': 'rgba(0,0,0,0)', 'plot_bgcolor': 'rgba(0,0,0,0)'}, autosize=True,
+                          font=dict(size=18))
+        fig.update_traces(marker=dict(size=14, opacity=0.8),
+                          selector=dict(mode='markers'))
+        return fig
+
+    def graph_heatmap(self, genes):
+        heat_df = (self.results_df[self.results_df[self.gene_id].isin(genes)][[self.gene_id, self.contrast_col, 'LFC_median']]
+                   .drop_duplicates()
+                   .pivot(index=self.gene_id, columns=self.contrast_col, values='LFC_median'))
+        heat_df.index.name = 'Gene'
+        fig = px.imshow(heat_df, color_continuous_scale=px.colors.diverging.Geyser,
+                        color_continuous_midpoint=0,
+                        width=1000, height=900)
+        fig.update_layout({'paper_bgcolor': 'rgba(0,0,0,0)', 'plot_bgcolor': 'rgba(0,0,0,0)'}, autosize=True,
+                          font=dict(size=10))
+        return fig
+
+
+    def display_pathway_heatmap(self, pathway_gene_names, kegg_id):
+        if kegg_id not in self.results_df.columns:
+            st.error(f"{kegg_id} not found in the results table")
+        else:
+            heat_df = self.results_df[self.results_df[kegg_id].isin(pathway_gene_names)]
+            absent = pd.DataFrame(
+                pd.Series(list(set(pathway_gene_names) - set(heat_df[kegg_id].unique())), name=kegg_id))
+            heat_df = heat_df[[self.gene_id, kegg_id, 'LFC_median', self.contrast_col]].drop_duplicates()
+            heat_df = pd.concat([heat_df, absent], axis=0)
+            s = heat_df[self.gene_id].fillna('-').values
+            p = heat_df[kegg_id].values
+            heat_df['Gene'] = [
+                f"{kegg_id}: {self.gene_id}" if self.gene_id != '-' and self.gene_id != kegg_id else f"{kegg_id}" for
+                kegg_id, self.gene_id in zip(p, s)]
+            heat_df = heat_df.pivot(index='Gene', columns=self.contrast_col, values='LFC_median')
+            fig = px.imshow(heat_df, color_continuous_scale=px.colors.diverging.Geyser,
+                            color_continuous_midpoint=0,
+                            width=1000, height=900)
+            fig.update_layout({'paper_bgcolor': 'rgba(0,0,0,0)', 'plot_bgcolor': 'rgba(0,0,0,0)'}, autosize=True,
+                              font=dict(size=10))
+            return fig
     # def subset_results(self, contrast_to_show):
     #     #df = self.results_df[~fdf[gene_id].str.contains(':')].copy() # todo come up with cleverer way to filter these
     #     self.subset_df = self.results_df[(self.results_df['contrast'].isin(contrast_to_show))].copy()
+
+
+class KeggMapsDataset:
+
+    def __init__(self, kegg_id, organism, results_df, gene_id=''):
+        self.organism = organism
+        self.kegg_id = kegg_id
+        self.gene_id = gene_id if gene_id else kegg_id
+        self.results_df = results_df
+        self.gene_to_pathway = {}
+
+
+    def validate_df(self):
+        # kegg_id in results_df columns
+        # other columns?
+        # library
+        # only 1 contrast
+        pass
+
+    @st.cache
+    def get_org_kegg_pathways(self):
+        result = pd.read_table(io.StringIO(kegg_list("pathway", self.organism).read()), header=None)
+        result.columns = [f'KEGG_Pathway', 'Pathway_Description']
+        result[f'KEGG_Pathway'] = result[f'KEGG_Pathway'].str.split(":").str.get(1)
+        result['Pathway_Description'] = result['Pathway_Description'].str.split(" - ").str.get(0)
+        result['KEGG_Display'] = result[f'KEGG_Pathway'] + ":" + result['Pathway_Description']
+        path_map = result.set_index('KEGG_Display').to_dict()
+        return path_map['KEGG_Pathway']
+
+
+    def get_gene_to_pathway_dict(self):
+        """
+        Take the results df and convert to dictionary with color and names for each gene to display
+        """
+        if self.gene_id != self.kegg_id:
+            self.results_df[self.gene_id] = self.results_df[self.gene_id].fillna(self.kegg_id)
+
+        if self.results_df.library.nunique() > 1:
+            self.results_df['hit'] = (self.results_df.groupby([self.kegg_id]).hit.sum()
+                                      .reset_index())['hit']
+        self.results_df['hitStar'] = self.results_df['hit'].apply(lambda x: '*' if x > 0 else '')
+        self.results_df['NameForMap'] = self.results_df[self.gene_id] + self.results_df['hitStar'] + \
+                                       "(" + self.results_df['LFC_median'].round(2).astype(str) + ")"
+        self.results_df['NameForMapNum'] = self.results_df[self.gene_id].apply(self.parse_number_out) + self.results_df['hitStar'] + \
+                                        "(" + self.results_df['LFC_median'].round(2).astype(str) + ")"
+        data_short = (self.results_df[{self.gene_id, self.kegg_id, 'NameForMap', 'NameForMapNum', 'LFC_median'}]
+                      .drop_duplicates()
+                      .dropna())
+        norm = matplotlib.colors.Normalize(vmin=-6, vmax=6, clip=True) # todo remove hard min and max values
+        mapper = matplotlib.cm.ScalarMappable(norm=norm, cmap=sns.diverging_palette(220, 20, as_cmap=True)) # Try matplotlib RdYlBu
+        data_short['hex'] = data_short.LFC_median.apply(mapper.to_rgba).apply(matplotlib.colors.to_hex)
+        data_short['hex'] = data_short.hex.str.replace('#000000', "#7c7d83")
+        self.gene_to_pathway = data_short.set_index(self.kegg_id).to_dict()
+
+
+    def parse_number_out(self, gene_name: Union[str, None]) -> Union[str, None]:
+        """
+        :param gene_name: KEGG gene name in the following format: organism:gene_name,
+                examples: eco:b3451 sey:SL1344_1569 ece:Z876
+        :param numbers_only: Whether to return full gene name or numbers only
+
+        :return: Parsed gene name
+        :rtype: str
+
+        """
+
+            # match = re.findall(r"(?<=[a-zA-Z_])\d+", string)
+            # positive lookbehind (?<=)
+            # searches from behind --> if match takes the part
+            # after the match
+            # \D means "not a digit"
+            # \d matches a digit (equivalent to [0-9])
+            # and matches the previous token between one and unlimited times,
+            # as many times as possible, giving back as needed (greedy)
+        if not gene_name:
+            return
+        match = re.findall(r"(?<=[\D])\d+", gene_name)
+        if match:
+            # takes the last match, because a list is provided
+            number = match[-1]
+            return number if number.isnumeric() else gene_name
+        return gene_name
+
+    def displayPDF(self, file):
+        # Opening file from file path
+        with open(file, "rb") as f:
+            base64_pdf = base64.b64encode(f.read()).decode('utf-8')
+        # Embedding PDF in HTML
+        pdf_display = F'<iframe src="data:application/pdf;base64,{base64_pdf}" width="700" height="1000" type="application/pdf"></iframe>'
+        # Displaying File
+        st.markdown(pdf_display, unsafe_allow_html=True)
+
+    def display_kegg_map(self, pathway_name, title, numeric=False):
+        """
+        ko_dict: {hex: {ko: color}, NameForMap: {ko: name}}
+
+        """
+        pathway_kgml = KGML_parser.read(kegg_get(pathway_name, "kgml"))
+        pathway_gene_names = [gene.name.split() for gene in pathway_kgml.genes]
+        pathway_gene_names = set([gene.split(":")[1] for sublist in pathway_gene_names for gene in sublist])
+        canvas = KGMLCanvas(pathway_kgml, import_imagemap=True)
+        not_found = []
+        for element in pathway_kgml.genes:
+            color = None
+            name = None
+            node_kos = [e.split(":")[1] for e in element.name.split()]
+            for ko in node_kos:
+                color = self.gene_to_pathway['hex'].get(ko, color)
+                name = self.gene_to_pathway['NameForMapNum'].get(ko, name) if numeric else self.gene_to_pathway['NameForMap'].get(ko, name)
+            for graphic in element.graphics:
+                if color is not None:
+                    graphic.bgcolor = color
+                    graphic.name = name
+                    not_found.append(0)
+                else:
+                    not_found.append(1)
+        if sum(not_found)/len(not_found) > 0.85:
+            st.warning(f'⚠️ {sum(not_found)} out of {len(not_found)} pathway genes not found in the dataset. Double check gene names match those used by KEGG')
+        fname = f"{title}_map.pdf"
+        canvas.draw(fname)
+        k1, k2 = st.columns(2)
+        st.info("Display works in Firefox only")
+        if k1.button(f'Display {pathway_name} map'):
+            self.displayPDF(fname)
+        with open(fname, "rb") as f:
+            k2.download_button(
+                f"Download {pathway_name} map",
+                data=f,
+                file_name=fname,
+            )
+        return pathway_gene_names
+
