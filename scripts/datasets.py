@@ -8,7 +8,7 @@ import yaml
 from pandera.errors import SchemaError
 from scripts.graphs import define_color_scheme
 import numpy as np
-
+from sklearn.decomposition import PCA
 from Bio.KEGG.REST import *
 from Bio.KEGG.KGML import KGML_parser
 from Bio.Graphics.KGML_vis import KGMLCanvas
@@ -18,6 +18,11 @@ import matplotlib
 import seaborn as sns
 
 import re
+
+@st.cache
+def convert_df(df):
+    # IMPORTANT: Cache the conversion to prevent computation on every rerun
+    return df.to_csv(index=False).encode('utf-8')
 
 def define_color_scheme():
     alphabetClrs = px.colors.qualitative.Dark24
@@ -126,8 +131,8 @@ class LibraryMap:
                          color_discrete_sequence=all_clrs, hover_data=self.attributes,
                          labels={self.insertion_site_col: 'Position, bp',
                                  self.abundance_col: 'Read Counts'})
-        fig.update_traces(marker=dict(size=8, line=dict(width=2, color='DarkSlateGrey')),
-                          selector=dict(mode='markers'), opacity=0.9)
+        fig.update_traces(marker=dict(size=8),
+                          selector=dict(mode='markers'), opacity=0.7)
         fig.update_layout({'paper_bgcolor': 'rgba(0,0,0,0)', 'plot_bgcolor': 'rgba(0,0,0,0)'},
                           autosize=True,
                           font=dict(size=24))
@@ -150,6 +155,117 @@ class LibraryMap:
         table2 = table2.set_index('Library')
         self.stats = table1.merge(table2, left_index=True, right_index=True)
 
+
+class CountDataSet:
+    def __init__(self, count_file, sample_data_file, config_file: str = 'scripts/config.yaml'):
+        self.count_data = pd.read_csv(count_file)
+        self.sample_data = pd.read_csv(sample_data_file).fillna('N/A')
+        with open(config_file, 'r') as cf:
+            config = yaml.load(cf, Loader=yaml.SafeLoader)['eda']
+        # Load column naming schema
+        self.col_name_config = config['fixed_column_names']
+        self.fixed_column_names = list(self.col_name_config.values())
+        self.barcode_col = self.col_name_config['barcode_col']
+        self.gene_name_col = self.col_name_config['gene_name_col']
+        self.sample_id_col = self.col_name_config['sample_id_col']
+        self.valid = self._validate()
+
+    def _validate(self):
+        """
+        First column of sample_data should be sampleIDs
+        """
+        st.write(f"Using {self.sample_data.columns[0]} to identify samples")
+        self.sample_data = self.sample_data.rename({self.sample_data.columns[0]: self.sample_id_col}, axis=1)
+        st.write(f"Using {self.count_data.columns[0]} to idnetify barcodes")
+        st.write(f"Using {self.count_data.columns[1]} to idnetify genes")
+        self.count_data = (self.count_data.rename({self.count_data.columns[0]: self.barcode_col,
+                                                   self.count_data.columns[1]: self.gene_name_col}, axis=1)
+                           .dropna(subset=[self.gene_name_col])
+                           .drop_duplicates())
+        samples_found = list(set(self.sample_data[self.sample_id_col].unique()).intersection(self.count_data.columns))
+        if not samples_found or self.barcode_col in samples_found or self.gene_name_col in samples_found:
+            st.error("No common samples found between sample data file and count table")
+            return False
+        self.sample_data = self.sample_data[self.sample_data[self.sample_id_col].isin(samples_found)]
+        self.count_data = self.count_data[[self.barcode_col, self.gene_name_col] + samples_found]
+        if self.count_data.empty:
+            return False
+        return True
+
+    def normalize_counts(self):
+        self.count_data = self.count_data.set_index([self.barcode_col, self.gene_name_col])
+        self.count_data = self.count_data.loc[:, self.count_data.sum() > 0]
+        self.count_data = np.log2((self.count_data / self.count_data.sum()) * 1000000 + 0.5).reset_index()
+
+    def get_principal_components(self, numPCs, numGenes, chooseBy):
+        """
+        :param numPCs:
+        :param numGenes:
+        :param chooseBy:
+        :return:
+        """
+        pcaDf = self.count_data.set_index(self.barcode_col).copy()
+        pcaDf = pcaDf.drop(self.gene_name_col, axis=1)
+        pcaSd = self.sample_data.set_index(self.sample_id_col).apply(lambda x: x.astype('category'))
+        if numGenes:
+            # calculate var for each, pick numGenes top var across samples -> df
+            if chooseBy == 'variance':
+                genes = pcaDf.var(axis=1).sort_values(ascending=False).head(int(numGenes)).index
+                pcaDf = pcaDf.loc[genes].T
+            else:
+                pass
+                # todo implement log2fc selection
+        else:
+            pcaDf = pcaDf.T
+        pca = PCA(n_components=numPCs)
+        principalComponents = pca.fit_transform(pcaDf)
+        pcs = [f'PC{i}' for i in range(1, numPCs + 1)]
+        pcDf = (pd.DataFrame(data=principalComponents, columns=pcs)
+                .set_index(pcaDf.index))
+        pcVar = {pcs[i]: round(pca.explained_variance_ratio_[i] * 100, 2) for i in range(0, numPCs)}
+        pcDf = pcDf.merge(pcaSd, how="left", left_index=True, right_index=True)
+        return pcDf, pcVar
+
+    def pca_figure(self, pcDf, pcX, pcY, pcVarHi, pcVar, pcSym, expVars, colorSeq, w=None, h=None):
+        h = h if h else 400
+        w = w if w else 800
+        fig = px.scatter(pcDf, x=pcX, y=pcY, color=pcVarHi, symbol=pcSym,
+                         labels={pcX: f'{pcX}, {pcVar[pcX]} % Variance',
+                                 pcY: f'{pcY}, {pcVar[pcY]} % Variance'},
+                         color_discrete_sequence=colorSeq,
+                         template='plotly_white',
+                         height=h, width=w, hover_data=expVars, hover_name=pcDf.index)
+        fig.update_layout({'paper_bgcolor': 'rgba(0,0,0,0)', 'plot_bgcolor': 'rgba(0,0,0,0)'},
+                          autosize=True,
+                          font=dict(size=16))
+        fig.update_traces(marker=dict(size=20,
+                                      line=dict(width=2,
+                                                color='DarkSlateGrey'), opacity=0.9),
+                          selector=dict(mode='markers'))
+        varDf = pd.DataFrame.from_dict(pcVar, orient='index').reset_index()
+        varDf.columns = ['PC', '% Variance']
+        fig2 = px.line(varDf, x='PC', y='% Variance', markers=True,
+                       labels={'PC': ''})
+        fig2.update_traces(marker=dict(size=12,
+                                       line=dict(width=2,
+                                                 color='DarkSlateGrey')))
+        pcSum = pcDf.groupby(pcVarHi).median()
+        fig3 = px.imshow(pcSum)
+        return fig, fig2, fig3
+
+    def barcode_abundance_plot(self, geneDf, groupBy, colorBy, colorSeq, box=True):
+        if box:
+            fig = px.box(geneDf, x=groupBy, y='log2CPM', color=colorBy,
+                         hover_data=geneDf.columns, points='all',
+                         color_discrete_sequence=colorSeq, )
+        else:
+            fig = px.violin(geneDf, x=groupBy, y='log2CPM', color=colorBy,
+                            hover_data=geneDf.columns, points='all',
+                            color_discrete_sequence=colorSeq, )
+        fig.update_layout({'paper_bgcolor': 'rgba(0,0,0,0)', 'plot_bgcolor': 'rgba(0,0,0,0)'}, autosize=True,
+                          font=dict(size=16))
+        fig.update_yaxes(showgrid=True, gridwidth=0.5, gridcolor='LightGrey')
+        return fig
 
 
 class ResultDataSet:

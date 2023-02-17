@@ -37,7 +37,7 @@ class CountDataSet:
 
     def _validate(self):
         """
-        First column of sampleData should be sampleIDs
+        First column of sample_data should be sampleIDs
         """
         self.sampleData = self.sampleData.rename({self.sampleData.columns[0]: 'sampleID'})
         samplesFound = list(set(self.sampleData.sampleID.unique()).intersection(self.countData.columns))
@@ -168,7 +168,7 @@ def app():
         # IF DATA IS LOADED VISUALIZE
         if cfile and mfile:
             """
-            Requirements: first column has barcodes, second column has attributes in the countData, rest need to be sampleIDs.
+            Requirements: first column has barcodes, second column has attributes in the count_data, rest need to be sampleIDs.
             Sample Data: first column are sampleIDs 
             Will only look at barcodes that were mapped to a feature 
             # """
@@ -190,7 +190,7 @@ def app():
                 chooseBy = 'variance'
                 numGenes = int(numGenes)
                 numPCs = int(numPCs)
-                # pcDf, pcVar = find_PCs(pcaDf, sampleData, numPCs, numGenes, chooseBy)
+                # pcDf, pcVar = find_PCs(pcaDf, sample_data, numPCs, numGenes, chooseBy)
                 pcDf, pcVar = cds.get_principal_components(numPCs, numGenes, chooseBy)
                 missingMeta = " ,".join(list(pcDf[pcDf.isna().any(axis=1)].index))
                 if missingMeta:
@@ -216,7 +216,7 @@ def app():
             st.write('## Barcode Abundance')
             with st.expander('Show Barcode Abundance'):
                 # Process the dataframe
-                # abDf = countData.dropna()
+                # abDf = count_data.dropna()
                 barcode = cds.countData.columns[0]
                 gene_name = cds.countData.columns[1]
 

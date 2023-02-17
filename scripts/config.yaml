@@ -10,9 +10,9 @@ library_map:
 eda:
   fixed_column_names:
     barcode_col: barcode
-    genename_col: gene_name
-    sampleID_col: sample_ID
+    gene_name_col: Gene Identifier
     name_col: name
+    sample_id_col: sample_id
 
 results:
   fixed_column_names:

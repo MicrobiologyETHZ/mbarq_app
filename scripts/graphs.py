@@ -33,22 +33,22 @@ def define_color_scheme():
     return colors, alphabetClrs, all_clrs
 
 
-# def find_PCs(countData, sampleData, numPCs=2, numGenes=None, choose_by='variance'):
+# def find_PCs(count_data, sample_data, numPCs=2, numGenes=None, choose_by='variance'):
 #     """
-#     :param countData: each column is a sampleID, index is featureID
-#     :param sampleData:
+#     :param count_data: each column is a sampleID, index is featureID
+#     :param sample_data:
 #     :param numPCs:
 #     :param numGenes:
 #     :return:
 #     """
-#     if countData.columns[0] != 'barcode':
+#     if count_data.columns[0] != 'barcode':
 #         st.write('Barcode column not found.')
 #         return ()
-#     if sampleData.columns[0] != 'sampleID':
+#     if sample_data.columns[0] != 'sampleID':
 #         st.write('sampleID column not found')
 #         return ()
-#     df = countData.set_index('barcode')
-#     sampleData = sampleData.set_index('sampleID').apply(lambda x: x.astype('category'))
+#     df = count_data.set_index('barcode')
+#     sample_data = sample_data.set_index('sampleID').apply(lambda x: x.astype('category'))
 #     if numGenes:
 #         # calculate var for each, pick numGenes top var across samples -> df
 #         if choose_by == 'variance':
@@ -58,14 +58,14 @@ def define_color_scheme():
 #             pass
 #             # todo implement log2fc selection
 #     else:
-#         df = countData.T
+#         df = count_data.T
 #     pca = PCA(n_components=numPCs)
 #     principalComponents = pca.fit_transform(df)
 #     pcs = [f'PC{i}' for i in range(1, numPCs + 1)]
 #     pcDf = (pd.DataFrame(data=principalComponents, columns=pcs)
 #               .set_index(df.index))
 #     pcVar = {pcs[i]: round(pca.explained_variance_ratio_[i] * 100, 2) for i in range(0, numPCs)}
-#     pcDf = pcDf.merge(sampleData, how="left", left_index=True, right_index=True)
+#     pcDf = pcDf.merge(sample_data, how="left", left_index=True, right_index=True)
 #     return pcDf, pcVar
 
 

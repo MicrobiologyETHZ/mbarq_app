@@ -1,6 +1,5 @@
 import streamlit as st
 from PIL import Image
-from scripts import eda, results
 #from pages import library_map
 import pandas as pd
 
@@ -68,17 +67,7 @@ def home_page():
 
 
 
-home_tab, eda_tab, dea_tab = st.tabs(["Home",
-                               "   📈 Exploratory Analysis   ", '   📊 Differential Abundance'])
-with home_tab:
-    home_page()
+home_page()
 
-# with lib_tab:
-#     library_map.app()
 
-with eda_tab:
-    eda.app()
-
-with dea_tab:
-    results.app()
 
