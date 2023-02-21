@@ -5,8 +5,13 @@ library_map:
     insertion_site_col: insertion_site
     chr_col: chr
     distance_col: distance_to_feature
-    strand_col: strand
     library_col: library
+  optional_column_names:
+    gene_start_col: gene_start
+    gene_end_col: gene_end
+    strand_col: gene_strand
+    percentile_col: percentile
+
 eda:
   fixed_column_names:
     barcode_col: barcode

@@ -1,6 +1,8 @@
 import streamlit as st
 from scripts.datasets import CountDataSet, convert_df, define_color_scheme
 import pandas as pd
+st.set_page_config(layout='wide')
+
 
 def app():
     hide_dataframe_row_index = """
@@ -11,37 +13,39 @@ def app():
                 """
     st.markdown(hide_dataframe_row_index, unsafe_allow_html=True)
     st.markdown(""" # Exploratory Analysis """)
-
-    # EXPLAIN WHAT HAPPENS ON THIS PAGE
     with st.expander("How this works: "):
-        st.markdown(""" ### Visualizing barcode count data. """)
-        c1, c2 = st.columns(2)
-        c1.markdown("""
-        - Takes in a **CSV** file of merged counts produced by `mbarq count` + `mbarq merge`. 
-        - The first column must contain the barcodes, the second column must contain barcode annotation. 
+
+        count_url = 'https://mbarq.readthedocs.io/en/latest/counting.html'
+        st.markdown(f"""
+        #### Count data:
+        
+        - A **csv** file of merged counts produced by `mbarq count` + `mbarq merge`. For instruction on how to generate this file, please see [here]({count_url}).
+        - The first column must contain the barcodes, the second column must contain gene identifier (ex. locus tag). 
         - All other columns must be sample names. 
+        #
         Example structure:
         """)
         test = pd.DataFrame([['ACACACGT', 'abcD', '450', '700'],
                              ['GACCCCAC', 'efgH', '100', '0']], columns=['barcode', 'geneName', 'sample1', 'sample2'])
-        c1.table(test)
-        c2.markdown("""
-
-        - Takes in a **CSV** file containing sample data. 
+        st.table(test)
+        st.markdown("""
+        #### Sample data:
+        - A **csv** file containing sample data. 
         - First column must contain sample names that correspond to sample names in the count file.  
         - All other columns will be read in as metadata
+        #
+        
         Example structure:
         """)
         test = pd.DataFrame([['sample1', 'treatment'], ['sample2', 'control']],
                             columns=['sampleID', 'treatment'])
-        c2.table(test)
+        st.table(test)
         st.markdown("""
 
         - Merged count table produced by `mbarq` will contain barcodes found in the mapping file, as well as unannotated barcodes (e.g. control spike-ins, artifacts). Only annotated barcodes are used for the exploratory analysis.
         - Simple TSS normalisation and log2 transformation is performed
         - For PCA plot, you can choose how many barcodes are used for the analysis, as well as which components to visualise. Scree plot shows the % of variance explained by each of the PCs. 
         - For Barcode Abundance, normalised barcode counts can be visualised for any gene of interest and compared across different sample data variables. 
-
         """)
 
     # LOAD THE DATA
@@ -53,7 +57,6 @@ def app():
             st.info('Browse the example data set below or load your own data on **⬆️ Data Upload** page')
             cfile = "examples/example_mbarq_merged_counts.csv"
             mfile = "examples/example_sample_data.csv"
-            st.subheader('Example mapping file')
             c1, c2 = st.columns(2)
             c1.subheader('Example count file (sample)')
             ex_df = pd.read_csv(cfile)
@@ -86,7 +89,8 @@ def app():
                 _, aC, sushi_clrs, all_clrs = define_color_scheme()
                 st.write('### PCA Options')
                 c1, c2, c3, c4 = st.columns(4)
-                numPCs = c1.number_input("Number of Principal Components", min_value=2, max_value=50, value=10)
+
+                numPCs = c1.number_input("Number of PCs", min_value=2, max_value=50, value=10)
                 numGenes = c2.number_input("Number of genes to use", min_value=int(numPCs),
                                            value=int(min(250, cds.count_data.shape[0])),
                                            max_value=int(cds.count_data.shape[0]))
@@ -94,6 +98,7 @@ def app():
                 numGenes = int(numGenes)
                 numPCs = int(numPCs)
                 pcDf, pcVar = cds.get_principal_components(numPCs, numGenes, chooseBy)
+
                 missingMeta = " ,".join(list(pcDf[pcDf.isna().any(axis=1)].index))
                 if missingMeta:
                     st.write(f"The following samples have missing_metadata and will not be shown: {missingMeta}")

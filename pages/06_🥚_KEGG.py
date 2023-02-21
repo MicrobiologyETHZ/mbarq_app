@@ -1,6 +1,7 @@
 import streamlit as st
 from scripts.datasets import ResultDataSet, KeggMapsDataset
 from pathlib import Path
+st.set_page_config(layout='wide')
 import requests
 from time import sleep
 from Bio.KEGG.REST import *
@@ -12,9 +13,6 @@ import plotly.express as px
 
 def app():
     st.markdown(""" ## Visualize fitness results with KEGG pathways """)
-
-
-
     with st.expander('How this works: '):
         st.markdown("""TBC""")
 
@@ -22,7 +20,6 @@ def app():
         # Get the data
         if 'results_ds' in st.session_state.keys():
             rds = st.session_state['results_ds']
-            gene_id = st.session_state['results_gene_id']
         else:
             st.info('Browse example results file or upload your data in **⬆️ Data Upload**')
             result_files = [Path("examples/example_rra_results.csv")]
@@ -38,17 +35,16 @@ def app():
                 st.write('Result table is empty')
 
     if not rds.results_df.empty:
-        org_col, kegg_col = st.columns(2)
-        organism_id = org_col.text_input('Enter 3 letter organism code', value='sey')
+        organism_id = st.text_input('Enter 3 letter organism code', value='sey')
         kegg_options = [c for c in rds.results_df.columns if 'LFC' not in c and 'fdr' not in c]
         try:
             kix = kegg_options.index('locus_tag')
         except ValueError:
             kix = 0
-        kegg_id = kegg_col.selectbox('Column corresponding to KEGG Entry names (usually locus_tag)',
+        kegg_id = st.selectbox('Column corresponding to KEGG Entry names (usually locus_tag)',
                                      options=kegg_options, index=kix)
         st.info(
-            f"❗Make sure KEGG recognizes unique gene identifier (you've entered `{kegg_id}`) for the taxon you specify ({organism_id}")
+            f"❗Make sure KEGG recognizes unique gene identifier (you've entered `{kegg_id}` for taxon `{organism_id}`) ")
 
         contrasts = rds.results_df[rds.contrast_col].sort_values().unique()
         libraries = rds.results_df[rds.library_col].sort_values().unique()
@@ -68,9 +64,8 @@ def app():
         else:
             lfc_low = lfc_col2.number_input('Min Log FC', step=0.5, value=-5.0)
             lfc_hi = lfc_col2.number_input('Max Log FC', step=0.5, value=-1.0)
-
         rds.identify_hits(library_to_show, lfc_low, lfc_hi, fdr_th)
-        kegg_df = rds.results_df[rds.results_df[rds.contrast_col] == contrast_to_show]
+        kegg_df = rds.results_df[rds.results_df[rds.contrast_col] == contrast_to_show].copy()
         kmd = KeggMapsDataset(kegg_id, organism_id, kegg_df, rds.gene_id)
         kmd.get_gene_to_pathway_dict()
 

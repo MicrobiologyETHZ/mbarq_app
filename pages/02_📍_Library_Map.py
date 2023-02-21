@@ -1,33 +1,30 @@
 from pathlib import Path
-from typing import List
 import pandas as pd
-import pandera as pa
-import plotly.express as px
 import streamlit as st
-import yaml
-from pandera.errors import SchemaError
-from scripts.datasets import LibraryMap
+from scripts.datasets import LibraryMap, convert_df
 from scripts.graphs import define_color_scheme
-
-
-@st.cache
-def convert_df(df):
-    # IMPORTANT: Cache the conversion to prevent computation on every rerun
-    return df.to_csv(index=False).encode('utf-8')
+st.set_page_config(layout='wide')
 
 
 def app():
     st.markdown(""" # Library Map """)
     with st.expander('How this works: '):
-        st.markdown("""
+        url = 'https://mbarq.readthedocs.io/en/latest/mapping.html'
+        st.markdown(f"""
 
         ### Visualize insertion position along the genome.
 
-        - Takes in library map **CSV** file (`*.annotated.csv`) produced by `mbarq map`. Expects to find the following columns in the file: `barcode`, `abundance_in_mapping_library`, `insertion_site`, `chr`, `distance_to_feature`, `strand`. 
-        - Can load more than one library file at the same time to compare! 
-        - You can select which sequence (e.g. chromosome or plasmids) to display, and color the insertions by distance to feature, multimapping or library.
-        - You can click on the figure legend to only show a specific subset of data (i.e. if looking at multiple libraries, double clicking on the specific library name will show data for that library only)
-
+        - Library map is a **csv** file produced by `mbarq map`. Instructions on how to generate this file can be found [here]({url}). 
+        - Library map file has to include the following columns: 
+            - `barcode`
+            - `abundance_in_mapping_library`
+            - `insertion_site`
+            - `chr`
+            - `distance_to_feature`
+        - You can load more than one library file at the same time to compare.
+        - You can select which sequence (e.g. chromosome or plasmids) to display, and color the insertions by library (if multiple files are loaded), or whether the insertion is inside a CDS.
+        - You can click on the figure legend to only show a specific subset of data (i.e. if looking at multiple libraries, double clicking on the specific library name will show data for that library only).
+        
         """)
 
     with st.container():
@@ -55,6 +52,12 @@ def app():
             st.stop()
         if st.checkbox("Show sample of the Library Map?"):
             st.write(lm.lib_map.sample(5))
+
+        # Generate summary stats for the libraries
+        with st.container():
+            lm.get_stats()
+            st.markdown("#### Insertion Summary")
+            st.table(lm.stats)
         # Graph coverage map or individual insertion abundance
         with st.container():
             # Define colors
@@ -67,7 +70,7 @@ def app():
                 fig = lm.graph_insertions(chr_col_choice, color_by_choice, all_clrs)
             else:
                 try:
-                    num_bins = c2.number_input('Number of bins', value=100)
+                    num_bins = c2.number_input('Number of bins', value=100, min_value=10, max_value=1000)
                     hist_col = c3.text_input('Color (hex, rgb, hsl, hsv or color name)', value=colors['teal'])
                     fig = lm.graph_coverage_hist(chr_col_choice, num_bins, hist_col)
                 except ValueError:
@@ -76,11 +79,6 @@ def app():
 
             st.plotly_chart(fig, use_container_width=True)
 
-        # Generate summary stats for the libraries
-        with st.container():
-            name_col = st.selectbox("Choose attribute column", lm.attributes)
-            lm.get_stats(name_col)
-            st.markdown("#### Insertion Summary")
-            st.table(lm.stats)
+
 
 app()

@@ -63,7 +63,9 @@ class LibraryMap:
             config = yaml.load(cf, Loader=yaml.SafeLoader)['library_map']
         # Load column naming schema
         col_name_config = config['fixed_column_names']
+        opt_name_config = config['optional_column_names']
         self.fixed_column_names = list(col_name_config.values())
+        self.optional_column_names = list(opt_name_config.values())
         self.chr_col = col_name_config['chr_col']
         self.insertion_site_col = col_name_config['insertion_site_col']
         self.abundance_col = col_name_config['abundance_col']
@@ -72,7 +74,6 @@ class LibraryMap:
 
     def load_map(self):
         map_dfs = []
-        attr_names = []
         if self.map_files:
             for uploaded_map in self.map_files:
                 st.write(f"Processing {uploaded_map.name}")
@@ -94,7 +95,8 @@ class LibraryMap:
         if not self.lib_map.empty:
             self.lib_map['library'] = 'example'
             self.lib_map['in CDS'] = self.lib_map[self.distance_col] == 0
-            self.attributes = [c for c in self.lib_map.columns if c not in self.fixed_column_names]
+        self.attributes = [c for c in self.lib_map.columns if c not in self.fixed_column_names
+                           and c not in self.optional_column_names + ['library', 'in CDS']]
 
     def validate_lib_map(self):
         lib_schema = pa.DataFrameSchema({
@@ -102,7 +104,7 @@ class LibraryMap:
             self.insertion_site_col: pa.Column(int, pa.Check(lambda x: x >= 0)),
             self.barcode_col: pa.Column(str, coerce=True),
             self.abundance_col: pa.Column(int, pa.Check(lambda x: x >= 0)),
-            self.distance_col: pa.Column(float, nullable=True),
+            self.distance_col: pa.Column(int, coerce=True, nullable=True),
             'in CDS': pa.Column(bool),
             'library': pa.Column(str, coerce=True)
         }
@@ -138,20 +140,21 @@ class LibraryMap:
                           font=dict(size=24))
         return fig
 
-    def get_stats(self, name_col):
+    def get_stats(self):
         table1 = (self.lib_map.groupby('library')
                   .agg({self.barcode_col: ['nunique'], self.distance_col: [lambda x: sum(x != 0)]})
                   .reset_index())
         table1.columns = ["Library", '# of insertions', '# of insertions outside of CDS']
         table1 = table1.set_index('Library')
-        table1[f'# of {name_col}s with insertion'] = (self.lib_map[self.lib_map[self.distance_col] == 0]
-                                                      .groupby('library')[name_col].nunique())
-        table2 = (self.lib_map.groupby(['library', name_col])[self.barcode_col].count()
+        for att in self.attributes:
+            table1[f'# of {att}s with insertion'] = (self.lib_map[self.lib_map[self.distance_col] == 0]
+                                                     .groupby('library')[att].nunique())
+        table2 = (self.lib_map.groupby(['library', self.attributes[0]])[self.barcode_col].count()
                   .reset_index().groupby('library')
                   .agg({self.barcode_col: ['median', 'max']})
                   .reset_index())
-        table2.columns = ['Library', 'Median insertions per gene', 'Max insertions per gene']
-        table2['Median insertions per gene'] = table2["Median insertions per gene"].astype(int)
+        table2.columns = ['Library', f'Median insertions per {self.attributes[0]}', f'Max insertions per {self.attributes[0]}']
+        table2[f'Median insertions per {self.attributes[0]}'] = table2[f"Median insertions per {self.attributes[0]}"].astype(int)
         table2 = table2.set_index('Library')
         self.stats = table1.merge(table2, left_index=True, right_index=True)
 
@@ -169,6 +172,7 @@ class CountDataSet:
         self.gene_name_col = self.col_name_config['gene_name_col']
         self.sample_id_col = self.col_name_config['sample_id_col']
         self.valid = self._validate()
+        self.norm_counts = pd.DataFrame()
 
     def _validate(self):
         """
@@ -193,9 +197,9 @@ class CountDataSet:
         return True
 
     def normalize_counts(self):
-        self.count_data = self.count_data.set_index([self.barcode_col, self.gene_name_col])
-        self.count_data = self.count_data.loc[:, self.count_data.sum() > 0]
-        self.count_data = np.log2((self.count_data / self.count_data.sum()) * 1000000 + 0.5).reset_index()
+        self.norm_counts = self.count_data.set_index([self.barcode_col, self.gene_name_col]).copy()
+        self.norm_counts = self.norm_counts.loc[:, self.norm_counts.sum() > 0]
+        self.norm_counts = np.log2((self.norm_counts / self.norm_counts.sum()) * 1000000 + 0.5).reset_index()
 
     def get_principal_components(self, numPCs, numGenes, chooseBy):
         """
@@ -204,7 +208,7 @@ class CountDataSet:
         :param chooseBy:
         :return:
         """
-        pcaDf = self.count_data.set_index(self.barcode_col).copy()
+        pcaDf = self.norm_counts.set_index(self.barcode_col).copy()
         pcaDf = pcaDf.drop(self.gene_name_col, axis=1)
         pcaSd = self.sample_data.set_index(self.sample_id_col).apply(lambda x: x.astype('category'))
         if numGenes:
@@ -224,6 +228,7 @@ class CountDataSet:
                 .set_index(pcaDf.index))
         pcVar = {pcs[i]: round(pca.explained_variance_ratio_[i] * 100, 2) for i in range(0, numPCs)}
         pcDf = pcDf.merge(pcaSd, how="left", left_index=True, right_index=True)
+        pcDf = pcDf[~pcDf.isna().any(axis=1)]
         return pcDf, pcVar
 
     def pca_figure(self, pcDf, pcX, pcY, pcVarHi, pcVar, pcSym, expVars, colorSeq, w=None, h=None):
@@ -270,7 +275,7 @@ class CountDataSet:
 
 class ResultDataSet:
     def __init__(self, result_files=(), config_file="scripts/config.yaml",
-                 gene_id='locus_tag'):
+                 gene_id='Name'):
         self.result_files: str = result_files
         self.gene_id: str = gene_id
         self.results_df = pd.DataFrame()
@@ -359,7 +364,7 @@ class ResultDataSet:
                    .rename({'level_0': 'ranking'}, axis=1)
                    .sort_values('ranking'))
 
-        hover_dict = {self.gene_id:True, self.contrast_col: True, 'LFC_median': True, 'fdr': True, 'ranking': False}
+        hover_dict = {self.gene_id: True, self.contrast_col: True, 'LFC_median': True, 'fdr': True, 'ranking': False}
 
         fig = px.scatter(rank_df, x='ranking', y='LFC_median', color='hit', symbol=self.contrast_col,
                          height=500,
@@ -392,25 +397,32 @@ class ResultDataSet:
 
 
     def display_pathway_heatmap(self, pathway_gene_names, kegg_id):
+
         if kegg_id not in self.results_df.columns:
             st.error(f"{kegg_id} not found in the results table")
         else:
             heat_df = self.results_df[self.results_df[kegg_id].isin(pathway_gene_names)]
             absent = pd.DataFrame(
                 pd.Series(list(set(pathway_gene_names) - set(heat_df[kegg_id].unique())), name=kegg_id))
-            heat_df = heat_df[[self.gene_id, kegg_id, 'LFC_median', self.contrast_col]].drop_duplicates()
+
+            heat_df = heat_df[{self.gene_id, kegg_id, 'LFC_median', self.contrast_col}].drop_duplicates()
             heat_df = pd.concat([heat_df, absent], axis=0)
-            s = heat_df[self.gene_id].fillna('-').values
-            p = heat_df[kegg_id].values
+            gene_names = heat_df[self.gene_id].fillna('-').values
+            kegg_tags = heat_df[kegg_id].values
+
             heat_df['Gene'] = [
-                f"{kegg_id}: {self.gene_id}" if self.gene_id != '-' and self.gene_id != kegg_id else f"{kegg_id}" for
-                kegg_id, self.gene_id in zip(p, s)]
+                f"{tag}: {name}" if name != '-' and name != tag else f"{tag}" for
+                tag, name in zip(kegg_tags, gene_names)]
+
+
             heat_df = heat_df.pivot(index='Gene', columns=self.contrast_col, values='LFC_median')
+
             fig = px.imshow(heat_df, color_continuous_scale=px.colors.diverging.Geyser,
                             color_continuous_midpoint=0,
                             width=1000, height=900)
             fig.update_layout({'paper_bgcolor': 'rgba(0,0,0,0)', 'plot_bgcolor': 'rgba(0,0,0,0)'}, autosize=True,
                               font=dict(size=10))
+
             return fig
     # def subset_results(self, contrast_to_show):
     #     #df = self.results_df[~fdf[gene_id].str.contains(':')].copy() # todo come up with cleverer way to filter these
@@ -425,7 +437,6 @@ class KeggMapsDataset:
         self.gene_id = gene_id if gene_id else kegg_id
         self.results_df = results_df
         self.gene_to_pathway = {}
-
 
     def validate_df(self):
         # kegg_id in results_df columns
@@ -443,7 +454,6 @@ class KeggMapsDataset:
         result['KEGG_Display'] = result[f'KEGG_Pathway'] + ":" + result['Pathway_Description']
         path_map = result.set_index('KEGG_Display').to_dict()
         return path_map['KEGG_Pathway']
-
 
     def get_gene_to_pathway_dict(self):
         """
@@ -468,7 +478,6 @@ class KeggMapsDataset:
         data_short['hex'] = data_short.LFC_median.apply(mapper.to_rgba).apply(matplotlib.colors.to_hex)
         data_short['hex'] = data_short.hex.str.replace('#000000', "#7c7d83")
         self.gene_to_pathway = data_short.set_index(self.kegg_id).to_dict()
-
 
     def parse_number_out(self, gene_name: Union[str, None]) -> Union[str, None]:
         """

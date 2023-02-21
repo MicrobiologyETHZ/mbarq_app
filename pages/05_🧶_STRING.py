@@ -7,8 +7,6 @@ from time import sleep
 def app():
     st.markdown(""" # Analyze fitness results with STRING-db """)
 
-
-
     with st.expander('How this works: '):
         st.markdown("""TBC""")
 
@@ -16,7 +14,6 @@ def app():
         # Get the data
         if 'results_ds' in st.session_state.keys():
             rds = st.session_state['results_ds']
-            gene_id = st.session_state['results_gene_id']
         else:
             st.info('Browse example results file or upload your data in **⬆️ Data Upload**')
             result_files = [Path("examples/example_rra_results.csv")]
@@ -32,8 +29,13 @@ def app():
                 st.write('Result table is empty')
 
     if not rds.results_df.empty:
+        if 'attributes' in st.session_state.keys():
+            gene_identifier = st.selectbox('Choose gene identifier',
+                                           st.session_state['attributes'])
+        else:
+            gene_identifier = rds.gene_id
         st.info(
-            f"❗Make sure STRING recognizes unique gene identifier (you've entered `{rds.gene_id}`) for the taxon you specify")
+            f"❗Make sure STRING recognizes unique gene identifier (you've entered `{gene_identifier}`) for the taxon you specify")
         species = st.number_input("NCBI species taxid", value=99287, help='Salmonella Typhimurium: 99287')
 
 
@@ -70,16 +72,16 @@ def app():
 
         if lfc_hi:
             st.markdown(
-                f"There are {string_df[rds.gene_id].nunique()} hits with FDR < {round(fdr_th, 2)} and within LFC range from {lfc_low} to {lfc_hi}")
+                f"There are {string_df[gene_identifier].nunique()} hits with FDR < {round(fdr_th, 2)} and within LFC range from {lfc_low} to {lfc_hi}")
         else:
             st.markdown(
-                f"There are {string_df[rds.gene_id].nunique()} hits with FDR < {round(fdr_th, 2)} and absolute LFC > {lfc_low}")
+                f"There are {string_df[gene_identifier].nunique()} hits with FDR < {round(fdr_th, 2)} and absolute LFC > {lfc_low}")
 
 
         string_api_url = "https://version-11-5.string-db.org/api"
         output_format = 'tsv-no-header'
         method = 'get_link'
-        my_genes = list(string_df[rds.gene_id].unique())
+        my_genes = list(string_df[gene_identifier].unique())
         request_url = "/".join([string_api_url, output_format, method])
         params = {
             "identifiers": "\r".join(my_genes),  # your protein
@@ -90,9 +92,16 @@ def app():
             #
         if st.button('Get STRING network'):
             network = requests.post(request_url, data=params)
-            network_url = network.text.strip()
-            st.markdown(f"[Link to STRING network]({network_url})")
-            sleep(1)
+
+            network_url = network
+            if network_url.status_code == 200:
+                st.markdown(f"[Link to STRING network]({network_url.text.strip()})")
+                sleep(1)
+            elif network_url.status_code == 400:
+                st.markdown(f"STRING does not recognize unique gene identifier provided")
+            else:
+                st.markdown(f"HTTP request error")
+
 
 
 

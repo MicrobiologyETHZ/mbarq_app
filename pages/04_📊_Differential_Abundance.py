@@ -1,6 +1,7 @@
 import streamlit as st
 from scripts.datasets import ResultDataSet
 from pathlib import Path
+st.set_page_config(layout='wide')
 
 
 def app():
@@ -12,7 +13,7 @@ def app():
         # Get the data
         if 'results_ds' in st.session_state.keys():
             rds = st.session_state['results_ds']
-            gene_id = st.selectbox['results_gene_id']
+            #gene_id = st.session_state['results_gene_id']
         else:
             st.info('Browse example results file or upload your data in **⬆️ Data Upload**')
             result_files = [Path("examples/example_rra_results.csv")]
