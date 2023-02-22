@@ -395,7 +395,6 @@ class ResultDataSet:
                           font=dict(size=10))
         return fig
 
-
     def display_pathway_heatmap(self, pathway_gene_names, kegg_id):
 
         if kegg_id not in self.results_df.columns:

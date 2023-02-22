@@ -29,7 +29,7 @@ def app():
     if 'map_file' in st.session_state.keys():
         st.write(f'Currently loaded libary map: {st.session_state["map_file"]}')
 
-    st.markdown("## Upload barcode count file and sample data file\n"
+    st.markdown("## Upload barcode **count data***  file and **sample data** file\n"
                 "Required for **Exploratory Analysis** page.")
     count_file = st.file_uploader('Upload a file containing merged count data', key='cnt')
     sample_file = st.file_uploader('Upload a file containing sample data', key='sample')
@@ -40,13 +40,13 @@ def app():
 
     if count_file is not None and sample_file is not None:
         cds = CountDataSet(count_file, sample_file)
-        st.session_state['count_cds'] = cds
+        st.session_state['count_ds'] = cds
         st.session_state['count_file'] = count_file
 
     if 'count_file' in st.session_state.keys():
         st.write(f'Currently loaded count file: {st.session_state["count_file"].name}')
 
-    st.markdown("## Upload results file\n"
+    st.markdown("## Upload **fitness data** file\n"
                 "Required for **Differential Abundance**, **STRING**, and **KEGG** pages. "
                 "You can upload multiple results files (i.e. results from different mutant libraries).")
     results_files = st.file_uploader('Upload the final results table',

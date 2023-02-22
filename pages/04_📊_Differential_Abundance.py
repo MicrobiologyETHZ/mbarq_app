@@ -7,7 +7,16 @@ st.set_page_config(layout='wide')
 def app():
     st.markdown(""" # Fitness Results """)
     with st.expander('How this works: '):
-        st.markdown("""TBC""")
+        an_url = "https://mbarq.readthedocs.io/en/latest/analysis.html"
+        st.markdown(f"""
+        
+        #### Fitness data: 
+        - a `csv` file produced by `mbarq analyze` command. To learn more about how to use `mbarq analyze`, please read [here]({an_url}).
+        - First column must be a gene identifier (for example, locus tag). 
+        - Must also include `LFC` and `contrast` columns, where `LFC` is log2 fold change in gene abundance for a specific treatment compared to control, and `contrast` specifies the treatment.  
+        - You can define hits by setting LFC and FDR cutoffs, and visualize them either by rank or via heatmaps. 
+        
+        """)
 
     with st.container():
         # Get the data

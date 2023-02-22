@@ -8,7 +8,15 @@ def app():
     st.markdown(""" # Analyze fitness results with STRING-db """)
 
     with st.expander('How this works: '):
-        st.markdown("""TBC""")
+        an_url = "https://mbarq.readthedocs.io/en/latest/analysis.html"
+        st.markdown(f"""#### Fitness data: 
+        - a `csv` file produced by `mbarq analyze` command. To learn more about how to use `mbarq analyze`, please read [here]({an_url}).
+        - First column must be a gene identifier (for example, locus tag). 
+        - Must also include `LFC` and `contrast` columns, where `LFC` is log2 fold change in gene abundance for a specific treatment compared to control, and `contrast` specifies the treatment.  
+        - You can define hits by setting LFC and FDR cutoffs, and submit gene identifiers of the hits to STRING search.
+        - Make sure that the gene identifier you used for analysis is recognized by STRING. 
+        - If you load the library map on the **Data Upload** page, you would be able to choose which identifier to use for STRING (for example, by default library map will have Name, locus tag and ID). 
+        """)
 
     with st.container():
         # Get the data
