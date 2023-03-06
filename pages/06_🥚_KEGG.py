@@ -85,11 +85,12 @@ def app():
         pathway_description = st.selectbox('Select KEGG Pathway to explore', pathway_map.keys())
         pathway_name = pathway_map[pathway_description]
         numeric = True if st.checkbox("Display locus numbers only") else False
-        with st.spinner(f'Drawing {pathway_name} for {contrast_to_show}'):
-            pathway_gene_names = kmd.display_kegg_map(pathway_name, f"{pathway_name}-{contrast_to_show}", numeric)
-        st.subheader(pathway_description.split(":")[1])
-        fig = rds.display_pathway_heatmap(pathway_gene_names, kegg_id)
-        st.plotly_chart(fig, use_container_width=True)
+        if st.button("Draw map"):
+            with st.spinner(f'Drawing {pathway_name} for {contrast_to_show}'):
+                pathway_gene_names = kmd.display_kegg_map(pathway_name, f"{pathway_name}-{contrast_to_show}", numeric)
+            st.subheader(pathway_description.split(":")[1])
+            fig = rds.display_pathway_heatmap(pathway_gene_names, kegg_id)
+            st.plotly_chart(fig, use_container_width=True)
 
 
 

@@ -24,7 +24,7 @@ def app():
             rds = st.session_state['results_ds']
         else:
             st.info('Browse example results file or upload your data in **⬆️ Data Upload**')
-            result_files = [Path("examples/example_rra_results.csv")]
+            result_files = [Path("examples/string_example_rra_results.csv")]
             gene_id = 'Name'
             rds = ResultDataSet(result_files=result_files, gene_id=gene_id)
             rds.load_results()

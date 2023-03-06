@@ -448,7 +448,7 @@ class KeggMapsDataset:
     def get_org_kegg_pathways(self):
         result = pd.read_table(io.StringIO(kegg_list("pathway", self.organism).read()), header=None)
         result.columns = [f'KEGG_Pathway', 'Pathway_Description']
-        result[f'KEGG_Pathway'] = result[f'KEGG_Pathway'].str.split(":").str.get(1)
+        #result[f'KEGG_Pathway'] = result[f'KEGG_Pathway'].str.split(":").str.get(1)
         result['Pathway_Description'] = result['Pathway_Description'].str.split(" - ").str.get(0)
         result['KEGG_Display'] = result[f'KEGG_Pathway'] + ":" + result['Pathway_Description']
         path_map = result.set_index('KEGG_Display').to_dict()
