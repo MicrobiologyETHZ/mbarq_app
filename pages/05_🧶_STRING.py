@@ -9,7 +9,9 @@ def app():
 
     with st.expander('How this works: '):
         an_url = "https://mbarq.readthedocs.io/en/latest/analysis.html"
-        st.markdown(f"""#### Fitness data: 
+        st.markdown(f"""
+        
+        #### Fitness data: 
         - a `csv` file produced by `mbarq analyze` command. To learn more about how to use `mbarq analyze`, please read [here]({an_url}).
         - First column must be a gene identifier (for example, locus tag). 
         - Must also include `LFC` and `contrast` columns, where `LFC` is log2 fold change in gene abundance for a specific treatment compared to control, and `contrast` specifies the treatment.  
