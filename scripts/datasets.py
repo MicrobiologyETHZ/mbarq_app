@@ -280,7 +280,7 @@ class ResultDataSet:
         self.gene_id: str = gene_id
         self.results_df = pd.DataFrame()
         self.subset_df = pd.DataFrame()
-
+        self.hit_df = pd.DataFrame()
         with open(config_file, 'r') as cf:
             config = yaml.load(cf, Loader=yaml.SafeLoader)['results']
         col_name_config = config['fixed_column_names']
@@ -328,33 +328,34 @@ class ResultDataSet:
             self.results_df = results_schema.validate(self.results_df)
         except SchemaError as err:
             st.error(f"""Schema Error: {err.args[0]}""")
-            self.results_df = pd.DataFrame()
 
     def identify_hits(self, library_to_show, lfc_low, lfc_hi, fdr_th):
+        self.hit_df = self.results_df.copy()
         if not lfc_hi:
-            self.results_df['hit'] = ((abs(self.results_df[self.lfc_col]) > lfc_low)
-                                      & (self.results_df['fdr'] < fdr_th))
+            self.hit_df['hit'] = ((abs(self.hit_df[self.lfc_col]) > lfc_low)
+                                      & (self.hit_df['fdr'] < fdr_th))
         else:
-            self.results_df['hit'] = ((self.results_df[self.lfc_col] > lfc_low) &
-                                      (self.results_df[self.lfc_col] < lfc_hi) &
-                                      (self.results_df['fdr'] < fdr_th))
-
+            self.hit_df['hit'] = ((self.hit_df[self.lfc_col] > lfc_low) &
+                                      (self.hit_df[self.lfc_col] < lfc_hi) &
+                                      (self.hit_df['fdr'] < fdr_th))
+        if 'LFC_median' in self.hit_df.columns:
+            self.hit_df = self.hit_df.drop('LFC_median', axis=1)
         if library_to_show != 'All':
-            self.results_df = self.results_df[self.results_df[self.library_col] == library_to_show]
-            self.results_df['LFC_median'] = self.results_df['LFC']
-            self.results_df['library_nunique'] = 1
-            self.results_df['hit_sum'] = self.results_df['hit']
+            self.hit_df = self.hit_df[self.hit_df[self.library_col] == library_to_show]
+            self.hit_df['LFC_median'] = self.hit_df['LFC']
+            self.hit_df['library_nunique'] = 1
+            self.hit_df['hit_sum'] = self.hit_df['hit']
         else:
-            df_grouped = (self.results_df.groupby([self.gene_id, self.contrast_col])
+            df_grouped = (self.hit_df.groupby([self.gene_id, self.contrast_col])
                           .agg({self.lfc_col: ['median'], self.library_col: ['nunique'],
                                 'hit': ['sum']})
                           .reset_index())
             df_grouped.columns = [self.gene_id, self.contrast_col, 'LFC_median', 'library_nunique', 'hit_sum']
 
-            self.results_df = self.results_df.merge(df_grouped, on=[self.gene_id, self.contrast_col], how='left')
+            self.hit_df = self.hit_df.merge(df_grouped, on=[self.gene_id, self.contrast_col], how='left')
 
     def graph_by_rank(self, contrast=(), kegg=False):
-        rank_df = self.kegg_df if kegg else self.results_df
+        rank_df = self.kegg_df if kegg else self.hit_df
         if contrast:
             rank_df = rank_df[rank_df[self.contrast_col].isin(contrast)]
         rank_df = (rank_df[[self.gene_id, self.contrast_col, 'LFC_median', 'hit', 'fdr']].drop_duplicates()
@@ -384,7 +385,7 @@ class ResultDataSet:
         return fig
 
     def graph_heatmap(self, genes):
-        heat_df = (self.results_df[self.results_df[self.gene_id].isin(genes)][[self.gene_id, self.contrast_col, 'LFC_median']]
+        heat_df = (self.hit_df[self.hit_df[self.gene_id].isin(genes)][[self.gene_id, self.contrast_col, 'LFC_median']]
                    .drop_duplicates()
                    .pivot(index=self.gene_id, columns=self.contrast_col, values='LFC_median'))
         heat_df.index.name = 'Gene'
@@ -400,7 +401,7 @@ class ResultDataSet:
         if kegg_id not in self.results_df.columns:
             st.error(f"{kegg_id} not found in the results table")
         else:
-            heat_df = self.results_df[self.results_df[kegg_id].isin(pathway_gene_names)]
+            heat_df = self.hit_df[self.hit_df[kegg_id].isin(pathway_gene_names)]
             absent = pd.DataFrame(
                 pd.Series(list(set(pathway_gene_names) - set(heat_df[kegg_id].unique())), name=kegg_id))
 

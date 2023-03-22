@@ -64,6 +64,7 @@ def app():
             library_to_show = st.selectbox('Select experiment to show', libraries)
         else:
             library_to_show = libraries[0]
+
         # SUBSET DATAFRAME TO SPECIFIC CONTRAST AND LIBRARY
         contrast_col, lfc_col1, lfc_col2, fdr_col = st.columns(4)
         contrast_to_show = contrast_col.selectbox('Select a contrast', contrasts)
@@ -76,7 +77,7 @@ def app():
             lfc_low = lfc_col2.number_input('Min Log FC', step=0.5, value=-5.0)
             lfc_hi = lfc_col2.number_input('Max Log FC', step=0.5, value=-1.0)
         rds.identify_hits(library_to_show, lfc_low, lfc_hi, fdr_th)
-        kegg_df = rds.results_df[rds.results_df[rds.contrast_col] == contrast_to_show].copy()
+        kegg_df = rds.hit_df[rds.hit_df[rds.contrast_col] == contrast_to_show].copy()
         kmd = KeggMapsDataset(kegg_id, organism_id, kegg_df, rds.gene_id)
         kmd.get_gene_to_pathway_dict()
 

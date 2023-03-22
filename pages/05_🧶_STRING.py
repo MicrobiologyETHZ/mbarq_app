@@ -29,7 +29,6 @@ def app():
             rds = ResultDataSet(result_files=result_files, gene_id=gene_id)
             rds.load_results()
             rds.validate_results_df()
-            # djfa
 
         if st.checkbox('Show sample of the dataset'):
             try:
@@ -46,8 +45,6 @@ def app():
         st.info(
             f"❗Make sure STRING recognizes unique gene identifier (you've entered `{gene_identifier}`) for the taxon you specify")
         species = st.number_input("NCBI species taxid", value=99287, help='Salmonella Typhimurium: 99287')
-
-
         contrasts = rds.results_df[rds.contrast_col].sort_values().unique()
         libraries = rds.results_df[rds.library_col].sort_values().unique()
         if len(libraries) > 1:
@@ -58,17 +55,17 @@ def app():
         # SUBSET DATAFRAME TO SPECIFIC CONTRAST AND LIBRARY
         contrast_col, lfc_col1, lfc_col2, fdr_col = st.columns(4)
         contrast_to_show = contrast_col.selectbox('Select a contrast', contrasts)
-        fdr_th = fdr_col.number_input('FDR cutoff', value=0.05)
+        fdr_th = fdr_col.number_input('adjusted p value cutoff', value=0.05)
         type_lfc_th = lfc_col1.radio('Absolute LFC cutoff or define range', ['Absolute', 'Range'])
         if type_lfc_th == 'Absolute':
-            lfc_low = lfc_col2.number_input('Log FC cutoff (absolute)', min_value=0.0, step=0.5, value=1.0)
+            lfc_low = lfc_col2.number_input('LFC cutoff (absolute)', min_value=0.0, step=0.5, value=1.0)
             lfc_hi = None
         else:
-            lfc_low = lfc_col2.number_input('Min Log FC',  step=0.5, value=-5.0)
-            lfc_hi = lfc_col2.number_input('Max Log FC',  step=0.5, value=-1.0)
+            lfc_low = lfc_col2.number_input('Min LFC',  step=0.5, value=-5.0)
+            lfc_hi = lfc_col2.number_input('Max LFC',  step=0.5, value=-1.0)
 
         rds.identify_hits(library_to_show,  lfc_low, lfc_hi, fdr_th)
-        string_df = rds.results_df[rds.results_df[rds.contrast_col] == contrast_to_show]
+        string_df = rds.hit_df[rds.hit_df[rds.contrast_col] == contrast_to_show]
         st.markdown(
             f"Analyze hits for ``{contrast_to_show}`` contrast for ``{library_to_show}`` experiment(s)")
         up = st.radio('Up or Down?', ('Upregulated Only', 'Downregulated Only', 'Both'), key='string')
