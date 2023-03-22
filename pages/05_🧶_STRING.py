@@ -29,6 +29,7 @@ def app():
             rds = ResultDataSet(result_files=result_files, gene_id=gene_id)
             rds.load_results()
             rds.validate_results_df()
+            # djfa
 
         if st.checkbox('Show sample of the dataset'):
             try:
@@ -109,8 +110,6 @@ def app():
                 st.markdown(f"STRING does not recognize unique gene identifier provided")
             else:
                 st.markdown(f"HTTP request error")
-
-
 
 
 app()
