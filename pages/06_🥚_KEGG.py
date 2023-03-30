@@ -10,6 +10,9 @@ from Bio.Graphics.KGML_vis import KGMLCanvas
 import pandas as pd
 import plotly.express as px
 
+# security issue
+#import ssl
+#ssl._create_default_https_context = ssl._create_unverified_context
 
 def app():
     st.markdown(""" ## Visualize fitness results with KEGG pathways """)

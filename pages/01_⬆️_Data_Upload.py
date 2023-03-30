@@ -7,9 +7,9 @@ def app():
     st.markdown("# Data Upload")
     st.markdown("## Upload library map\n"
                 "Required for **Library Map** page. You can upload multiple files for comparison.")
-    url_map = "https://mbarq.readthedocs.io/en/latest/mapping.html"
-    map_files = st.file_uploader(f'Upload a mutant [library map]({url_map}) file (ex. `library.annotated.csv`)',
-                                 accept_multiple_files=True, key='map')
+    url_map = 'https://mbarq.readthedocs.io/en/latest/mapping.html'
+    st.markdown(f'Upload a mutant [library map]({url_map}) file (ex. `library.annotated.csv`)')
+    map_files = st.file_uploader(f'Upload', accept_multiple_files=True, key='map')
 
     if st.button('Clear', key='map_clear_button') and 'map_file' in st.session_state.keys():
         del st.session_state['map_file']
@@ -27,9 +27,9 @@ def app():
         st.session_state['annotations'] = lm.lib_map[lm.attributes].drop_duplicates()
 
     if 'map_file' in st.session_state.keys():
-        st.write(f'Currently loaded libary map: {st.session_state["map_file"]}')
+        st.write(f'**Currently loaded libary map**: {st.session_state["map_file"]}')
 
-    st.markdown("## Upload barcode **count data***  file and **sample data** file\n"
+    st.markdown("## Upload barcode **count data**  file and **sample data** file\n"
                 "Required for **Exploratory Analysis** page.")
     count_file = st.file_uploader('Upload a file containing merged count data', key='cnt')
     sample_file = st.file_uploader('Upload a file containing sample data', key='sample')
@@ -44,7 +44,7 @@ def app():
         st.session_state['count_file'] = count_file
 
     if 'count_file' in st.session_state.keys():
-        st.write(f'Currently loaded count file: {st.session_state["count_file"].name}')
+        st.write(f'**Currently loaded count file**: {st.session_state["count_file"].name}')
 
     st.markdown("## Upload **fitness data** file\n"
                 "Required for **Differential Abundance**, **STRING**, and **KEGG** pages. "
@@ -69,7 +69,7 @@ def app():
         st.session_state['results_ds'] = rds
 
     if 'results_files' in st.session_state.keys():
-        st.write(f'Currently loaded count file: {st.session_state["results_files"]}')
+        st.write(f'**Currently loaded count file**: {st.session_state["results_files"]}')
 
 
 if __name__ == "__main__":

@@ -32,7 +32,7 @@ def app():
         #### Sample data:
         - A **csv** file containing sample data. 
         - First column must contain sample names that correspond to sample names in the count file.  
-        - All other columns will be read in as metadata
+        - All other columns will be read in as metadata.
         #
         
         Example structure:
@@ -43,7 +43,7 @@ def app():
         st.markdown("""
 
         - Merged count table produced by `mbarq` will contain barcodes found in the mapping file, as well as unannotated barcodes (e.g. control spike-ins, artifacts). Only annotated barcodes are used for the exploratory analysis.
-        - Simple TSS normalisation and log2 transformation is performed
+        - Simple TSS normalisation and log2 transformation is performed.
         - For PCA plot, you can choose how many barcodes are used for the analysis, as well as which components to visualise. Scree plot shows the % of variance explained by each of the PCs. 
         - For Barcode Abundance, normalised barcode counts can be visualised for any gene of interest and compared across different sample data variables. 
         """)
@@ -144,7 +144,7 @@ def app():
                     condition_categories = list(cds.sample_data[compare_condition].unique())
                 genes = st.multiselect("Choose gene(s) of interest", cds.count_data[cds.gene_name_col].unique())
                 if len(genes) * len(condition_categories) > 40:
-                    st.write('Too many genes/categories to display, consider choosing fewer genes')
+                    st.write('Too many genes/categories to display, consider choosing fewer genes.')
                 else:
                     gene_df = cds.count_data[cds.count_data[cds.gene_name_col].isin(genes)]
                     ab_sample_df = cds.sample_data[cds.sample_data[compare_condition].isin(condition_categories)]

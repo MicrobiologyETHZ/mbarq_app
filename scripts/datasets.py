@@ -76,7 +76,7 @@ class LibraryMap:
         map_dfs = []
         if self.map_files:
             for uploaded_map in self.map_files:
-                st.write(f"Processing {uploaded_map.name}")
+                st.write(f"_Processing {uploaded_map.name}_")
                 df, df_name = pd.read_csv(uploaded_map), uploaded_map.name
                 if 'library' not in df.columns:
                     library_name = st.text_input("Change library name?", value=df_name)
@@ -178,10 +178,10 @@ class CountDataSet:
         """
         First column of sample_data should be sampleIDs
         """
-        st.write(f"Using {self.sample_data.columns[0]} to identify samples")
+        st.write(f"_Using {self.sample_data.columns[0]} to identify samples_")
         self.sample_data = self.sample_data.rename({self.sample_data.columns[0]: self.sample_id_col}, axis=1)
-        st.write(f"Using {self.count_data.columns[0]} to idnetify barcodes")
-        st.write(f"Using {self.count_data.columns[1]} to idnetify genes")
+        st.write(f"_Using {self.count_data.columns[0]} to identify barcodes_")
+        st.write(f"_Using {self.count_data.columns[1]} to identify genes_")
         self.count_data = (self.count_data.rename({self.count_data.columns[0]: self.barcode_col,
                                                    self.count_data.columns[1]: self.gene_name_col}, axis=1)
                            .dropna(subset=[self.gene_name_col])
@@ -296,7 +296,7 @@ class ResultDataSet:
     def load_results(self):
         results_df_list = []
         for uploaded_result in self.result_files:
-            st.write(f"Processing {uploaded_result.name}")
+            st.write(f"_Processing {uploaded_result.name}_")
             df = pd.read_csv(uploaded_result)
             if 'library' not in df.columns:
                 library_name = st.text_input("Add experiment name", value=uploaded_result.name.split("_rra")[0])
@@ -392,6 +392,7 @@ class ResultDataSet:
         fig = px.imshow(heat_df, color_continuous_scale=px.colors.diverging.Geyser,
                         color_continuous_midpoint=0,
                         width=1000, height=900)
+        #fig.update_xaxes(tickangle=90)
         fig.update_layout({'paper_bgcolor': 'rgba(0,0,0,0)', 'plot_bgcolor': 'rgba(0,0,0,0)'}, autosize=True,
                           font=dict(size=10))
         return fig
