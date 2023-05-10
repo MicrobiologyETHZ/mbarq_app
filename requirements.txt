@@ -13,6 +13,5 @@ pandera
 #streamlit-aggrid
 pyaml
 pytest
-pycairo==1.21
 hypothesis
 regex
