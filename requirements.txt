@@ -8,7 +8,7 @@ scikit-learn == 1.0.2
 seaborn
 matplotlib == 3.3.1
 biopython == 1.79
-reportlab
+reportlab == 3.5.68
 pandera
 #streamlit-aggrid
 pyaml
