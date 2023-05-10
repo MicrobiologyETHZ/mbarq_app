@@ -1,3 +1,5 @@
+altair==4.2.0
+pycairo==1.21
 numpy==1.22.3
 pandas == 1.4.3
 plotly == 5.5.0
