@@ -14,7 +14,7 @@ def app():
 
         ### Visualize insertion position along the genome.
 
-        - Library map is a **csv** file produced by `mbarq map`. Instructions on how to generate this file can be found [here]({url}). 
+        - For this page you need to upload a library map file, which is a **csv** file produced by `mbarq map`. Instructions on how to generate this file can be found [here]({url}). 
         - Library map file has to include the following columns: 
             - `barcode`
             - `abundance_in_mapping_library`

@@ -2,9 +2,11 @@ import streamlit as st
 from scripts.datasets import LibraryMap, CountDataSet, ResultDataSet
 st.set_page_config(layout='wide')
 
-
 def app():
     st.markdown("# Data Upload")
+    info_url = "https://docs.streamlit.io/knowledge-base/using-streamlit/where-file-uploader-store-when-deleted"
+    st.info(f""" mBARq app does not store your data. You can read more on this [here]({info_url}). """)
+
     st.markdown("## Upload library map\n"
                 "Required for **Library Map** page. You can upload multiple files for comparison.")
     url_map = 'https://mbarq.readthedocs.io/en/latest/mapping.html'

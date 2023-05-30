@@ -20,10 +20,10 @@ def app():
         an_url = "https://mbarq.readthedocs.io/en/latest/analysis.html"
         st.markdown(f"""
         #### Fitness data: 
-        - a `csv` file produced by `mbarq analyze` command. To learn more about how to use `mbarq analyze`, please read [here]({an_url}).
+        - For this page you need to upload a `csv` file produced by `mbarq analyze` command. To learn more about how to use `mbarq analyze`, please read [here]({an_url}).
         - First column must be a gene identifier (for example, locus tag). 
         - Must also include `LFC` and `contrast` columns, where `LFC` is log2 fold change in gene abundance for a specific treatment compared to control, and `contrast` specifies the treatment.  
-        - If you organism has KEGG annotation, you can provide a three letter organism identifier and load any of the KEGG metabolic maps available.
+        - If your organism has KEGG annotation, you can provide a three letter organism identifier and load any of the KEGG metabolic maps available.
         - You can choose a metabolic pathway of interest, and look at LFC of genes in that pathway. Genes identified as hits will have a * next to their name.
         - Make sure that the gene identifier you used for analysis is recognized by KEGG. 
         - If you load the library map on the **Data Upload** page, you would be able to choose which identifier to use for KEGG (for example, by default library map will have Name, locus tag and ID). 
