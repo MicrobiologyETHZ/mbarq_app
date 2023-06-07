@@ -1,14 +1,14 @@
+reportlab
+streamlit == 1.17.0
+biopython == 1.79
+pandas
 altair
 numpy
-pandas == 1.4.3
 plotly
 scipy
-streamlit == 1.17.0
 scikit-learn
 seaborn
 matplotlib
-biopython == 1.79
-reportlab == 3.5.68
 pandera
 pyaml
 pytest
