@@ -1,6 +1,6 @@
 altair
 numpy
-pandas
+pandas < 2.0.2
 plotly
 scipy
 streamlit == 1.17.0
