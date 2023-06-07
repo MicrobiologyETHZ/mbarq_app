@@ -87,7 +87,7 @@ def app():
             st.write('## PCA plot')
             # PCA GRAPH
             with st.expander('Show PCA'):
-                _, aC, sushi_clrs, all_clrs = define_color_scheme()
+                aC, sushi_clrs, all_clrs = define_color_scheme()
                 st.write('### PCA Options')
                 c1, c2, c3, c4 = st.columns(4)
 
