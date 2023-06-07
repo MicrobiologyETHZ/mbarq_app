@@ -1,6 +1,7 @@
 import streamlit as st
 from scripts.datasets import CountDataSet, convert_df, define_color_scheme
 import pandas as pd
+from pathlib import Path
 st.set_page_config(layout='wide')
 
 
@@ -105,17 +106,19 @@ def app():
                 pcDf = pcDf[~pcDf.isna().any(axis=1)]  # todo this should be included in the function
                 pcxLabels = [f'PC{i}' for i in range(1, numPCs + 1)]
                 expVars = [c for c in pcDf.columns if c not in pcxLabels]
-                w, h = None, None
+                w, h, font_size = None, None, 24
                 if st.checkbox('Modify PCA plot dimensions'):
-                    wc, hc = st.columns(2)
+                    wc, hc, font = st.columns(3)
                     w = wc.number_input('Width', min_value=200, max_value=1000, value=800)
                     h = hc.number_input('Height', min_value=200, max_value=1000, value=400)
+                    font_size = font.number_input("Font size", min_value=8, max_value=40, value=24)
                 pcX = c1.selectbox('X-axis component', pcxLabels)
                 pcY = c2.selectbox('Y-axis component', [pc for pc in pcxLabels if pc != pcX])
                 pcVarHi = c3.radio('Variable to highlight', expVars)
                 pcSym = c4.radio('Variable to show as symbol', [None] + expVars)
                 pcDf = pcDf.sort_values(pcVarHi)
-                fig1, fig2, fig3 = cds.pca_figure(pcDf, pcX, pcY, pcVarHi, pcVar, pcSym, expVars, all_clrs, w, h)
+                fig1, fig2, fig3 = cds.pca_figure(pcDf, pcX, pcY, pcVarHi, pcVar, pcSym, expVars,
+                                                  all_clrs, w, h, font_size=font_size)
                 st.plotly_chart(fig1, use_container_width=False)
                 c5, c6 = st.columns(2)
                 c5.write('### Scree Plot')

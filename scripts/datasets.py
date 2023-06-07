@@ -6,7 +6,6 @@ import plotly.express as px
 import streamlit as st
 import yaml
 from pandera.errors import SchemaError
-from scripts.graphs import define_color_scheme
 import numpy as np
 from sklearn.decomposition import PCA
 from Bio.KEGG.REST import *
@@ -24,18 +23,17 @@ def convert_df(df):
     # IMPORTANT: Cache the conversion to prevent computation on every rerun
     return df.to_csv(index=False).encode('utf-8')
 
+
 def define_color_scheme():
-    alphabetClrs = px.colors.qualitative.Dark24
-    clrs = ["#f7ba65", "#bf4713", "#9c002f", "#d73d00", "#008080", "#004c4c"]
-    colors = {'grey': "#E2E2E2",
-              'light_yellow': clrs[0],
-              'darko': clrs[1],
-              'maroon': clrs[2],
-              'brighto': clrs[3],
-              'teal': clrs[4],
-              'darkteal': clrs[5]
-              }
-    sushi_colors = {'red': '#C0504D',
+    alphabet_clrs = px.colors.qualitative.Dark24
+    app_colors = {'grey': "#E2E2E2",
+                  'red': '#C0504D',
+                  'light_yellow': "#f7ba65",
+                  'darko': "#bf4713",
+                  'maroon': "#9c002f",
+                  'brighto': "#d73d00",
+                  'teal': "#008080",
+                  'darkteal': "#004c4c",
                     'orange': '#F79646',
                     'medSea': '#4BACC6',
                     'black': '#000000',
@@ -43,9 +41,8 @@ def define_color_scheme():
                     'lgreen': '#92D050',
                     'dblue': '#366092',
                     'lblue': '#95B3D7'}
-   # all_clrs = [colors['brighto'], colors['teal'], colors['maroon']] + alphabetClrs[13:]
-    all_clrs = ['#F79646', '#366092', '#00B04E', '#C0504D', colors['maroon'], colors['teal']] + alphabetClrs
-    return colors, alphabetClrs, sushi_colors, all_clrs
+    all_clrs = ['#F79646', '#366092', '#00B04E', '#C0504D', app_colors['teal'], app_colors['maroon']] + alphabet_clrs
+    return alphabet_clrs, app_colors, all_clrs
 
 
 class LibraryMap:
@@ -120,10 +117,11 @@ class LibraryMap:
         df_to_show = self.lib_map[self.lib_map[self.chr_col] == chr_col_choice].sort_values(self.insertion_site_col)
         fig = px.histogram(df_to_show, x=self.insertion_site_col, nbins=int(num_bins),
                            labels={self.insertion_site_col: 'Position, bp'}, color_discrete_sequence=[hist_col])
-        fig.update_layout({'paper_bgcolor': 'rgba(0,0,0,0)', 'plot_bgcolor': 'rgba(0,0,0,0)'},
-                          autosize=True,
-                          bargap=0.1,
-                          font=dict(size=24))
+        fig.update_layout(bargap=0.1)
+        fig.update_xaxes(showline=True, linewidth=1, linecolor='black',
+                         tickfont=dict(size=20, color='black'),  titlefont=dict(size=24, color='black'))
+        fig.update_yaxes(showline=True, linewidth=1, linecolor='black',
+                         tickfont=dict(size=20, color='black'), titlefont=dict(size=24, color='black'))
         return fig
 
     def graph_insertions(self, chr_col_choice, color_by_choice, all_clrs):
@@ -138,6 +136,10 @@ class LibraryMap:
         fig.update_layout({'paper_bgcolor': 'rgba(0,0,0,0)', 'plot_bgcolor': 'rgba(0,0,0,0)'},
                           autosize=True,
                           font=dict(size=24))
+        fig.update_xaxes(showline=True, linewidth=1, linecolor='black',
+                         tickfont=dict(size=18, color='black'), titlefont=dict(size=24, color='black'))
+        fig.update_yaxes(showline=True, linewidth=1, linecolor='black',
+                         tickfont=dict(size=18, color='black'), titlefont=dict(size=24, color='black'))
         return fig
 
     def get_stats(self):
@@ -231,22 +233,26 @@ class CountDataSet:
         pcDf = pcDf[~pcDf.isna().any(axis=1)]
         return pcDf, pcVar
 
-    def pca_figure(self, pcDf, pcX, pcY, pcVarHi, pcVar, pcSym, expVars, colorSeq, w=None, h=None):
+    def pca_figure(self, pcDf, pcX, pcY, pcVarHi, pcVar, pcSym, expVars, colorSeq, w=None, h=None,
+                   font_size=24):
         h = h if h else 400
         w = w if w else 800
+        font_size = max(font_size, 8)
         fig = px.scatter(pcDf, x=pcX, y=pcY, color=pcVarHi, symbol=pcSym,
                          labels={pcX: f'{pcX}, {pcVar[pcX]} % Variance',
                                  pcY: f'{pcY}, {pcVar[pcY]} % Variance'},
                          color_discrete_sequence=colorSeq,
                          template='plotly_white',
                          height=h, width=w, hover_data=expVars, hover_name=pcDf.index)
-        fig.update_layout({'paper_bgcolor': 'rgba(0,0,0,0)', 'plot_bgcolor': 'rgba(0,0,0,0)'},
-                          autosize=True,
-                          font=dict(size=16))
         fig.update_traces(marker=dict(size=20,
                                       line=dict(width=2,
                                                 color='DarkSlateGrey'), opacity=0.9),
                           selector=dict(mode='markers'))
+        fig.update_xaxes(showline=True, linewidth=2, linecolor='black',
+                         tickfont=dict(size=font_size-6, color='black'), titlefont=dict(size=font_size, color='black'))
+        fig.update_yaxes(showline=True, linewidth=2, linecolor='black',
+                         tickfont=dict(size=font_size-6, color='black'), titlefont=dict(size=font_size, color='black'))
+        fig.update_layout(legend=dict(font=dict(size=font_size)), legend_title=dict(font=dict(size=font_size)))
         varDf = pd.DataFrame.from_dict(pcVar, orient='index').reset_index()
         varDf.columns = ['PC', '% Variance']
         fig2 = px.line(varDf, x='PC', y='% Variance', markers=True,
@@ -291,7 +297,7 @@ class ResultDataSet:
         self.library_col = col_name_config['library_col']
         self.string_df = pd.DataFrame()
         self.kegg_df = pd.DataFrame()
-        self.colors, self.alphabetClrs, self.sushi_colors, self.all_clrs = define_color_scheme()
+        self.alphabet_clrs, self.app_colors, self.all_clrs = define_color_scheme()
 
     def load_results(self):
         results_df_list = []
@@ -370,8 +376,8 @@ class ResultDataSet:
         fig = px.scatter(rank_df, x='ranking', y='LFC_median', color='hit', symbol=self.contrast_col,
                          height=500,
                          color_discrete_map={
-                             True: self.colors['darko'],
-                             False: self.colors['grey']},
+                             True: self.app_colors['darko'],
+                             False: self.app_colors['grey']},
                          hover_name=self.gene_id,
                          hover_data=hover_dict,
                          labels={"ranking": '', 'LFC_median': 'LFC'}
