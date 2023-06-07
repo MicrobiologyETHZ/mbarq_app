@@ -1,6 +1,6 @@
 reportlab
 altair==4.2
-streamlit == 1.17.0
+streamlit == 1.23.1
 biopython == 1.79
 pandas
 numpy
