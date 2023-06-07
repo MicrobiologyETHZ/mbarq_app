@@ -18,7 +18,7 @@ import seaborn as sns
 
 import re
 
-@st.cache
+@st.cache_data
 def convert_df(df):
     # IMPORTANT: Cache the conversion to prevent computation on every rerun
     return df.to_csv(index=False).encode('utf-8')
@@ -233,17 +233,18 @@ class CountDataSet:
         pcDf = pcDf[~pcDf.isna().any(axis=1)]
         return pcDf, pcVar
 
-    def pca_figure(self, pcDf, pcX, pcY, pcVarHi, pcVar, pcSym, expVars, colorSeq, w=None, h=None,
+    def pca_figure(self, pc_df, pc_x_axis, pc_y_axis, highlight_var, percent_variance,
+                   symbol_var, experiment_vars, color_sequence, w=None, h=None,
                    font_size=24):
         h = h if h else 400
         w = w if w else 800
         font_size = max(font_size, 8)
-        fig = px.scatter(pcDf, x=pcX, y=pcY, color=pcVarHi, symbol=pcSym,
-                         labels={pcX: f'{pcX}, {pcVar[pcX]} % Variance',
-                                 pcY: f'{pcY}, {pcVar[pcY]} % Variance'},
-                         color_discrete_sequence=colorSeq,
+        fig = px.scatter(pc_df, x=pc_x_axis, y=pc_y_axis, color=highlight_var, symbol=symbol_var,
+                         labels={pc_x_axis: f'{pc_x_axis}, {percent_variance[pc_x_axis]} % Variance',
+                                 pc_y_axis: f'{pc_y_axis}, {percent_variance[pc_y_axis]} % Variance'},
+                         color_discrete_sequence=color_sequence,
                          template='plotly_white',
-                         height=h, width=w, hover_data=expVars, hover_name=pcDf.index)
+                         height=h, width=w, hover_data=experiment_vars, hover_name=pc_df.index)
         fig.update_traces(marker=dict(size=20,
                                       line=dict(width=2,
                                                 color='DarkSlateGrey'), opacity=0.9),
@@ -253,15 +254,16 @@ class CountDataSet:
         fig.update_yaxes(showline=True, linewidth=2, linecolor='black',
                          tickfont=dict(size=font_size-6, color='black'), titlefont=dict(size=font_size, color='black'))
         fig.update_layout(legend=dict(font=dict(size=font_size)), legend_title=dict(font=dict(size=font_size)))
-        varDf = pd.DataFrame.from_dict(pcVar, orient='index').reset_index()
-        varDf.columns = ['PC', '% Variance']
-        fig2 = px.line(varDf, x='PC', y='% Variance', markers=True,
+        percent_variance_df = pd.DataFrame.from_dict(percent_variance, orient='index').reset_index()
+        percent_variance_df.columns = ['PC', '% Variance']
+        fig2 = px.line(percent_variance_df, x='PC', y='% Variance', markers=True,
                        labels={'PC': ''})
         fig2.update_traces(marker=dict(size=12,
                                        line=dict(width=2,
                                                  color='DarkSlateGrey')))
-        pcSum = pcDf.groupby(pcVarHi).median()
-        fig3 = px.imshow(pcSum)
+
+        pc_summary = pc_df.groupby(highlight_var)[[c for c in pc_df.columns if c.startswith('PC')]].median()
+        fig3 = px.imshow(pc_summary)
         return fig, fig2, fig3
 
     def barcode_abundance_plot(self, geneDf, groupBy, colorBy, colorSeq, box=True):
@@ -412,7 +414,7 @@ class ResultDataSet:
             absent = pd.DataFrame(
                 pd.Series(list(set(pathway_gene_names) - set(heat_df[kegg_id].unique())), name=kegg_id))
 
-            heat_df = heat_df[{self.gene_id, kegg_id, 'LFC_median', self.contrast_col}].drop_duplicates()
+            heat_df = heat_df[list({self.gene_id, kegg_id, 'LFC_median', self.contrast_col})].drop_duplicates()
             heat_df = pd.concat([heat_df, absent], axis=0)
             gene_names = heat_df[self.gene_id].fillna('-').values
             kegg_tags = heat_df[kegg_id].values
@@ -452,9 +454,9 @@ class KeggMapsDataset:
         # only 1 contrast
         pass
 
-    @st.cache
-    def get_org_kegg_pathways(self):
-        result = pd.read_table(io.StringIO(kegg_list("pathway", self.organism).read()), header=None)
+    @st.cache_data
+    def get_org_kegg_pathways(_self):
+        result = pd.read_table(io.StringIO(kegg_list("pathway", _self.organism).read()), header=None)
         result.columns = [f'KEGG_Pathway', 'Pathway_Description']
         #result[f'KEGG_Pathway'] = result[f'KEGG_Pathway'].str.split(":").str.get(1)
         result['Pathway_Description'] = result['Pathway_Description'].str.split(" - ").str.get(0)
@@ -477,7 +479,7 @@ class KeggMapsDataset:
                                        "(" + self.results_df['LFC_median'].round(2).astype(str) + ")"
         self.results_df['NameForMapNum'] = self.results_df[self.gene_id].apply(self.parse_number_out) + self.results_df['hitStar'] + \
                                         "(" + self.results_df['LFC_median'].round(2).astype(str) + ")"
-        data_short = (self.results_df[{self.gene_id, self.kegg_id, 'NameForMap', 'NameForMapNum', 'LFC_median'}]
+        data_short = (self.results_df[list({self.gene_id, self.kegg_id, 'NameForMap', 'NameForMapNum', 'LFC_median'})]
                       .drop_duplicates()
                       .dropna())
         norm = matplotlib.colors.Normalize(vmin=-6, vmax=6, clip=True) # todo remove hard min and max values
