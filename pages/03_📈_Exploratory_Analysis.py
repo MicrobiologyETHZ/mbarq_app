@@ -21,7 +21,7 @@ def app():
         st.markdown(f"""
         #### Count data:
         
-        - A **csv** file of merged counts produced by `mbarq count` + `mbarq merge`. For instruction on how to generate this file, please see [here]({count_url}).
+        - For this page you need to upload a **csv** file of merged counts produced by `mbarq count` + `mbarq merge`. For instruction on how to generate this file, please see [here]({count_url}).
         - The first column must contain the barcodes, the second column must contain gene identifier (ex. locus tag). 
         - All other columns must be sample names. 
         #

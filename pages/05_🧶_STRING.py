@@ -12,7 +12,7 @@ def app():
         st.markdown(f"""
         
         #### Fitness data: 
-        - a `csv` file produced by `mbarq analyze` command. To learn more about how to use `mbarq analyze`, please read [here]({an_url}).
+        - For this page you need to upload a `csv` file produced by `mbarq analyze` command. To learn more about how to use `mbarq analyze`, please read [here]({an_url}).
         - First column must be a gene identifier (for example, locus tag). 
         - Must also include `LFC` and `contrast` columns, where `LFC` is log2 fold change in gene abundance for a specific treatment compared to control, and `contrast` specifies the treatment.  
         - You can define hits by setting LFC and FDR cutoffs, and submit gene identifiers of the hits to STRING search.
