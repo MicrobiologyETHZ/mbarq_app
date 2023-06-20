@@ -119,9 +119,9 @@ class LibraryMap:
                            labels={self.insertion_site_col: 'Position, bp'}, color_discrete_sequence=[hist_col])
         fig.update_layout(bargap=0.1)
         fig.update_xaxes(showline=True, linewidth=1, linecolor='black',
-                         tickfont=dict(size=20, color='black'),  titlefont=dict(size=24, color='black'))
+                         tickfont=dict(size=24, color='black'),  titlefont=dict(size=30, color='black'))
         fig.update_yaxes(showline=True, linewidth=1, linecolor='black',
-                         tickfont=dict(size=20, color='black'), titlefont=dict(size=24, color='black'))
+                         tickfont=dict(size=24, color='black'), titlefont=dict(size=30, color='black'))
         return fig
 
     def graph_insertions(self, chr_col_choice, color_by_choice, all_clrs):
@@ -392,7 +392,7 @@ class ResultDataSet:
                           selector=dict(mode='markers'))
         return fig
 
-    def graph_heatmap(self, genes):
+    def graph_heatmap(self, genes, font_size=24):
         heat_df = (self.hit_df[self.hit_df[self.gene_id].isin(genes)][[self.gene_id, self.contrast_col, 'LFC_median']]
                    .drop_duplicates()
                    .pivot(index=self.gene_id, columns=self.contrast_col, values='LFC_median'))
@@ -400,9 +400,17 @@ class ResultDataSet:
         fig = px.imshow(heat_df, color_continuous_scale=px.colors.diverging.Geyser,
                         color_continuous_midpoint=0,
                         width=1000, height=900)
-        #fig.update_xaxes(tickangle=90)
-        fig.update_layout({'paper_bgcolor': 'rgba(0,0,0,0)', 'plot_bgcolor': 'rgba(0,0,0,0)'}, autosize=True,
-                          font=dict(size=10))
+
+        fig.update_xaxes(showline=True, linewidth=2, linecolor='black',
+                         tickfont=dict(size=font_size - 6, color='black'),
+                         titlefont=dict(size=font_size, color='black'), tickangle=90)
+        fig.update_yaxes(showline=True, linewidth=2, linecolor='black',
+                         tickfont=dict(size=font_size - 6, color='black'),
+                         titlefont=dict(size=font_size, color='black'))
+        fig.update_layout(legend=dict(font=dict(size=font_size - 2, color='black')),
+                          coloraxis_colorbar=dict(title=dict(text='LFC', font=dict(size=font_size, color='black')),
+                                                  tickfont=dict(size=font_size - 2, color='black')))
+
         return fig
 
     def display_pathway_heatmap(self, pathway_gene_names, kegg_id):
@@ -455,8 +463,8 @@ class KeggMapsDataset:
         pass
 
     @st.cache_data
-    def get_org_kegg_pathways(_self):
-        result = pd.read_table(io.StringIO(kegg_list("pathway", _self.organism).read()), header=None)
+    def get_org_kegg_pathways(_self, organism):
+        result = pd.read_table(io.StringIO(kegg_list("pathway", organism).read()), header=None)
         result.columns = [f'KEGG_Pathway', 'Pathway_Description']
         #result[f'KEGG_Pathway'] = result[f'KEGG_Pathway'].str.split(":").str.get(1)
         result['Pathway_Description'] = result['Pathway_Description'].str.split(" - ").str.get(0)

@@ -85,7 +85,7 @@ def app():
         kmd.get_gene_to_pathway_dict()
 
         with st.spinner(f"Loading the list of all KEGG pathways for {organism_id}"):
-            pathway_map = kmd.get_org_kegg_pathways()
+            pathway_map = kmd.get_org_kegg_pathways(organism_id)
         pathway_description = st.selectbox('Select KEGG Pathway to explore', pathway_map.keys())
         pathway_name = pathway_map[pathway_description]
         numeric = True if st.checkbox("Display locus numbers only") else False
