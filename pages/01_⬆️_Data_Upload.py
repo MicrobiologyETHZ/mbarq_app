@@ -1,63 +1,67 @@
 import streamlit as st
 from scripts.datasets import LibraryMap, CountDataSet, ResultDataSet
 st.set_page_config(layout='wide')
+from random import randint
 
 def app():
+
     st.markdown("# Data Upload")
     info_url = "https://docs.streamlit.io/knowledge-base/using-streamlit/where-file-uploader-store-when-deleted"
     st.info(f""" mBARq app does not store your data. You can read more on this [here]({info_url}). """)
 
+    # Uploading mapping data
     st.markdown("## Upload library map\n"
                 "Required for **Library Map** page. You can upload multiple files for comparison.")
     url_map = 'https://mbarq.readthedocs.io/en/latest/mapping.html'
-    st.markdown(f'Upload a mutant [library map]({url_map}) file (ex. `library.annotated.csv`)')
-    map_files = st.file_uploader(f'Upload', accept_multiple_files=True, key='map')
-
-    if st.button('Clear', key='map_clear_button') and 'map_file' in st.session_state.keys():
-        del st.session_state['map_file']
-        del st.session_state['lib_map']
-        del st.session_state['attributes']
-        del st.session_state['annotations']
-
+    st.markdown(f'Upload a RB-TnSeq [library map]({url_map}) file (ex. `library.annotated.csv`)')
+    map_files = st.file_uploader(f'Upload', accept_multiple_files=True, key='map_file_key')
     if map_files:
         lm = LibraryMap(map_files=map_files)
         lm.load_map()
         lm.validate_lib_map()
-        st.session_state['map_file'] = ", ".join([m.name for m in map_files])
         st.session_state['lib_map'] = lm
-        st.session_state['attributes'] = lm.attributes
         st.session_state['annotations'] = lm.lib_map[lm.attributes].drop_duplicates()
 
-    if 'map_file' in st.session_state.keys():
-        st.write(f'**Currently loaded libary map**: {st.session_state["map_file"]}')
+    # If clear button is pressed removed the file and lib_map from session state
+    if st.button('Clear', key='map_clear_button') and 'lib_map' in st.session_state.keys():
+        del st.session_state['lib_map']
+        del st.session_state['annotations']
+    if 'lib_map' in st.session_state.keys():
+        st.info(f'**Currently loaded libary map**: {", ".join([m.name for m in st.session_state["lib_map"].map_files])}')
+    else:
+        st.info("**No library map is currently loaded**")
 
+    # Uploading count data
+    count_url = "https://mbarq.readthedocs.io/en/latest/counting.html"
     st.markdown("## Upload barcode **count data**  file and **sample data** file\n"
+                f"Learn more about file format [here]({count_url}). "
                 "Required for **Exploratory Analysis** page.")
-    count_file = st.file_uploader('Upload a file containing merged count data', key='cnt')
-    sample_file = st.file_uploader('Upload a file containing sample data', key='sample')
 
-    if st.button('Clear', key='count_clear_button') and 'count_file' in st.session_state.keys():
-        del st.session_state['count_file']
-        del st.session_state['count_ds']
-
+    count_file = st.file_uploader('Upload a file containing merged count data', key='count_file_key')
+    sample_file = st.file_uploader('Upload a file containing sample data', key='sample_data_key')
     if count_file is not None and sample_file is not None:
         cds = CountDataSet(count_file, sample_file)
+        # todo add validation step?
         st.session_state['count_ds'] = cds
-        st.session_state['count_file'] = count_file
 
-    if 'count_file' in st.session_state.keys():
-        st.write(f'**Currently loaded count file**: {st.session_state["count_file"].name}')
+    if st.button('Clear', key='count_clear_button') and 'count_ds' in st.session_state.keys():
+        del st.session_state['count_ds']
+    if 'count_ds' in st.session_state.keys():
+        st.info(f'**Currently loaded  files**: `{st.session_state["count_ds"].count_file.name}` '
+                f'and `{st.session_state["count_ds"].sample_data_file.name}`')
+    else:
+        st.info("**No count/sample files are currently loaded**")
 
+    # Upload the analysis results
+    analysis_url = "https://mbarq.readthedocs.io/en/latest/analysis.html"
     st.markdown("## Upload **fitness data** file\n"
                 "Required for **Differential Abundance**, **STRING**, and **KEGG** pages. "
+                f"Learn more about file format [here]({analysis_url}). "
                 "You can upload multiple results files (i.e. results from different mutant libraries).")
+
     results_files = st.file_uploader('Upload the final results table',
                                      accept_multiple_files=True,
-                                     key='res')
-    if st.button('Clear', key='res_button') and 'results_files' in st.session_state.keys():
-        del st.session_state['results_files']
-        del st.session_state['results_ds']
-
+                                     key='results_file_key')
     if results_files:
         gene_id = st.text_input('Unique gene identifier used in the result files', value='Name')
         rds = ResultDataSet(results_files, gene_id=gene_id)
@@ -67,11 +71,15 @@ def app():
             if rds.gene_id in st.session_state['annotations'].columns:
                 rds.results_df = (rds.results_df.merge(st.session_state['annotations'],
                                                        how='left', on=rds.gene_id))
-        st.session_state['results_files'] = ", ".join([m.name for m in results_files])
         st.session_state['results_ds'] = rds
 
-    if 'results_files' in st.session_state.keys():
-        st.write(f'**Currently loaded count file**: {st.session_state["results_files"]}')
+    if st.button('Clear', key='res_button') and 'results_ds' in st.session_state.keys():
+        del st.session_state['results_ds']
+
+    if 'results_ds' in st.session_state.keys():
+        st.info(f'**Currently loaded count file**: `{", ".join([m.name for m in st.session_state["results_ds"].result_files])}`')
+    else:
+        st.info("**No result file is currently loaded**")
 
 
 if __name__ == "__main__":

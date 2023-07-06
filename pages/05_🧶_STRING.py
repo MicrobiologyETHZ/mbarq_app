@@ -41,7 +41,7 @@ def app():
     if not rds.results_df.empty:
         if 'attributes' in st.session_state.keys():
             gene_identifier = st.selectbox('Choose gene identifier',
-                                           st.session_state['attributes'])
+                                           st.session_state['lib_map'].attributes)
         else:
             gene_identifier = rds.gene_id
         st.info(

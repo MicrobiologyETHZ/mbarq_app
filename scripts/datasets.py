@@ -90,7 +90,6 @@ class LibraryMap:
             except ValueError:
                 st.error("No library map loaded")
         if not self.lib_map.empty:
-            self.lib_map['library'] = 'example'
             self.lib_map['in CDS'] = self.lib_map[self.distance_col] == 0
         self.attributes = [c for c in self.lib_map.columns if c not in self.fixed_column_names
                            and c not in self.optional_column_names + ['library', 'in CDS']]
@@ -163,8 +162,10 @@ class LibraryMap:
 
 class CountDataSet:
     def __init__(self, count_file, sample_data_file, config_file: str = 'scripts/config.yaml'):
-        self.count_data = pd.read_csv(count_file)
-        self.sample_data = pd.read_csv(sample_data_file).fillna('N/A')
+        self.count_file = count_file
+        self.sample_data_file = sample_data_file
+        self.count_data = pd.read_csv(self.count_file)
+        self.sample_data = pd.read_csv(self.sample_data_file).fillna('N/A')
         with open(config_file, 'r') as cf:
             config = yaml.load(cf, Loader=yaml.SafeLoader)['eda']
         # Load column naming schema
@@ -319,6 +320,10 @@ class ResultDataSet:
             fdf['-log10FDR'] = -1 * np.log10(fdf['fdr'])
             fdf = fdf.fillna({self.gene_id: 'N/A'})
             self.results_df = fdf
+        except KeyError:
+            # todo rethink validation and column generation
+            st.error(f'Could not find one of the following columns: '
+                     f'{", ".join([self.lfc_col, self.fdr_col, self.fdr_col2])}. Wrong file format?')
         except ValueError:
             st.error('No result files loaded')
 
@@ -331,7 +336,6 @@ class ResultDataSet:
             self.library_col: pa.Column(str, coerce=True),
             'fdr': pa.Column(float),
             '-log10FDR': pa.Column(float)})
-
         try:
             self.results_df = results_schema.validate(self.results_df)
         except SchemaError as err:
