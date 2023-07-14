@@ -13,8 +13,11 @@ def app():
     st.markdown("## Upload library map\n"
                 "Required for **Library Map** page. You can upload multiple files for comparison.")
     url_map = 'https://mbarq.readthedocs.io/en/latest/mapping.html'
-    st.markdown(f'Upload a RB-TnSeq [library map]({url_map}) file (ex. `library.annotated.csv`)')
-    map_files = st.file_uploader(f'Upload', accept_multiple_files=True, key='map_file_key')
+    upload_msg = f'Upload a RB-TnSeq [library map]({url_map}) file (ex. `library.annotated.csv`)'
+    with st.form("map-form", clear_on_submit=True):
+        map_files = st.file_uploader(upload_msg, accept_multiple_files=True, key='map_file_key')
+        submitted = st.form_submit_button("Submit")
+
     if map_files:
         lm = LibraryMap(map_files=map_files)
         lm.load_map()
@@ -23,9 +26,10 @@ def app():
         st.session_state['annotations'] = lm.lib_map[lm.attributes].drop_duplicates()
 
     # If clear button is pressed removed the file and lib_map from session state
-    if st.button('Clear', key='map_clear_button') and 'lib_map' in st.session_state.keys():
+    if st.button('Clear loaded map', key='map_clear_button') and 'lib_map' in st.session_state.keys():
         del st.session_state['lib_map']
         del st.session_state['annotations']
+
     if 'lib_map' in st.session_state.keys():
         st.info(f'**Currently loaded libary map**: {", ".join([m.name for m in st.session_state["lib_map"].map_files])}')
     else:
@@ -36,15 +40,17 @@ def app():
     st.markdown("## Upload barcode **count data**  file and **sample data** file\n"
                 f"Learn more about file format [here]({count_url}). "
                 "Required for **Exploratory Analysis** page.")
+    with st.form("count-form", clear_on_submit=True):
+        count_file = st.file_uploader('Upload a file containing merged count data', key='count_file_key')
+        sample_file = st.file_uploader('Upload a file containing sample data', key='sample_data_key')
+        st.form_submit_button("Submit")
 
-    count_file = st.file_uploader('Upload a file containing merged count data', key='count_file_key')
-    sample_file = st.file_uploader('Upload a file containing sample data', key='sample_data_key')
     if count_file is not None and sample_file is not None:
         cds = CountDataSet(count_file, sample_file)
         # todo add validation step?
         st.session_state['count_ds'] = cds
 
-    if st.button('Clear', key='count_clear_button') and 'count_ds' in st.session_state.keys():
+    if st.button('Clear loaded count and sample data', key='count_clear_button') and 'count_ds' in st.session_state.keys():
         del st.session_state['count_ds']
     if 'count_ds' in st.session_state.keys():
         st.info(f'**Currently loaded  files**: `{st.session_state["count_ds"].count_file.name}` '
@@ -58,10 +64,12 @@ def app():
                 "Required for **Differential Abundance**, **STRING**, and **KEGG** pages. "
                 f"Learn more about file format [here]({analysis_url}). "
                 "You can upload multiple results files (i.e. results from different mutant libraries).")
-
-    results_files = st.file_uploader('Upload the final results table',
+    with st.form("fitness-form", clear_on_submit=True):
+        results_files = st.file_uploader('Upload the final results table',
                                      accept_multiple_files=True,
                                      key='results_file_key')
+        st.form_submit_button("Submit")
+
     if results_files:
         gene_id = st.text_input('Unique gene identifier used in the result files', value='Name')
         rds = ResultDataSet(results_files, gene_id=gene_id)
@@ -73,7 +81,7 @@ def app():
                                                        how='left', on=rds.gene_id))
         st.session_state['results_ds'] = rds
 
-    if st.button('Clear', key='res_button') and 'results_ds' in st.session_state.keys():
+    if st.button('Clear loaded fitness data', key='res_button') and 'results_ds' in st.session_state.keys():
         del st.session_state['results_ds']
 
     if 'results_ds' in st.session_state.keys():

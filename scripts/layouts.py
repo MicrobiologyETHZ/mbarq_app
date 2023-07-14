@@ -3,6 +3,7 @@ from scripts.datasets import define_color_scheme
 
 ALPHABET_COLORS, APP_COLORS, ALL_COLORS = define_color_scheme()
 
+
 def pca_layout(cds):
     with st.expander('Show PCA'):
 
@@ -10,8 +11,9 @@ def pca_layout(cds):
         c1, c2, c3, c4 = st.columns(4)
         num_components = c1.number_input("Number of PCs", min_value=2, max_value=50, value=10)
         num_genes = c2.number_input("Number of genes to use", min_value=int(num_components),
-                                   value=int(min(250, cds.count_data.shape[0])),
-                                   max_value=int(cds.count_data.shape[0]))
+                                    value=int(max(100, cds.count_data.shape[0] * 0.1)),
+                                    max_value=int(cds.count_data.shape[0]),
+                                    help='By default, uses top 10% most variable barcodes')
         choose_by = 'variance'
         num_genes = int(num_genes)
         num_components = int(num_components)
@@ -33,7 +35,8 @@ def pca_layout(cds):
         pc_to_highlight = c3.radio('Variable to highlight', experiment_vars)
         pc_to_symbol = c4.radio('Variable to show as symbol', [None] + experiment_vars)
         pc_df = pc_df.sort_values(pc_to_highlight)
-        fig1, fig2, fig3 = cds.pca_figure(pc_df, pc_x, pc_y, pc_to_highlight, percent_variance, pc_to_symbol, experiment_vars,
+        fig1, fig2, fig3 = cds.pca_figure(pc_df, pc_x, pc_y, pc_to_highlight, percent_variance, pc_to_symbol,
+                                          experiment_vars,
                                           ALL_COLORS, desired_width, desired_height, font_size=font_size)
         st.plotly_chart(fig1, use_container_width=False)
         c5, c6 = st.columns(2)
