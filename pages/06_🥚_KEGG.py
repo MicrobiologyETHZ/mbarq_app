@@ -20,13 +20,13 @@ def app():
         an_url = "https://mbarq.readthedocs.io/en/latest/analysis.html"
         st.markdown(f"""
         #### Fitness data: 
-        - For this page you need to upload a `csv` file produced by `mbarq analyze` command. To learn more about how to use `mbarq analyze`, please read [here]({an_url}).
-        - First column must be a gene identifier (for example, locus tag). 
+        - For this page, you need to upload a `csv` file produced by the `mbarq analyze` command. To learn more about how to use `mbarq analyze`, please read [here]({an_url}).
+        - The first column must be a gene identifier (for example, locus tag). 
         - Must also include `LFC` and `contrast` columns, where `LFC` is log2 fold change in gene abundance for a specific treatment compared to control, and `contrast` specifies the treatment.  
-        - If your organism has KEGG annotation, you can provide a three letter organism identifier and load any of the KEGG metabolic maps available.
-        - You can choose a metabolic pathway of interest, and look at LFC of genes in that pathway. Genes identified as hits will have a * next to their name.
+        - If your organism has KEGG annotation, you can provide a three-letter organism identifier and load any of the KEGG metabolic maps available.
+        - You can choose a metabolic pathway of interest, and look at the LFC of genes in that pathway. Genes identified as hits will have a * next to their name.
         - Make sure that the gene identifier you used for analysis is recognized by KEGG. 
-        - If you load the library map on the **Data Upload** page, you would be able to choose which identifier to use for KEGG (for example, by default library map will have Name, locus tag and ID). 
+        - If you load the library map on the **Data Upload** page, you will be able to choose which identifier to use for KEGG (for example, by default library map will have Name, locus tag, and ID). 
         
         """)
 
@@ -35,7 +35,7 @@ def app():
         if 'results_ds' in st.session_state.keys():
             rds = st.session_state['results_ds']
         else:
-            st.info('Browse example results file or upload your data in **⬆️ Data Upload**')
+            st.info('Browse the example results file or upload your data in **⬆️ Data Upload**')
             result_files = [Path("examples/example_rra_results.csv")]
             gene_id = 'Name'
             rds = ResultDataSet(result_files=result_files, gene_id=gene_id)
@@ -49,7 +49,7 @@ def app():
                 st.write('Result table is empty')
 
     if not rds.results_df.empty:
-        organism_id = st.text_input('Enter 3 letter organism code', value='sey')
+        organism_id = st.text_input('Enter three-letter organism code', value='sey')
         kegg_options = [c for c in rds.results_df.columns if 'LFC' not in c and 'fdr' not in c]
         try:
             kix = kegg_options.index('locus_tag')

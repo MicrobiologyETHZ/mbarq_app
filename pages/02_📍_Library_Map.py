@@ -14,16 +14,16 @@ def app():
 
         ### Visualize insertion position along the genome.
 
-        - For this page you need to upload a library map file, which is a **csv** file produced by `mbarq map`. Instructions on how to generate this file can be found [here]({url}). 
-        - Library map file has to include the following columns: 
+        - For this page, you need to upload a library map file, which is a **csv** file produced by `mbarq map`. Instructions on how to generate this file can be found [here]({url}). 
+        - The library map file has to include the following columns: 
             - `barcode`
             - `abundance_in_mapping_library`
             - `insertion_site`
             - `chr`
             - `distance_to_feature`
         - You can load more than one library file at the same time to compare.
-        - You can select which sequence (e.g. chromosome or plasmids) to display, and color the insertions by library (if multiple files are loaded), or whether the insertion is inside a CDS.
-        - You can click on the figure legend to only show a specific subset of data (i.e. if looking at multiple libraries, double clicking on the specific library name will show data for that library only).
+        - You can select which sequence (e.g. chromosome or plasmids) to display, and color the insertions by the library (if multiple files are loaded), or whether the insertion is inside a CDS.
+        - You can click on the figure legend to only show a specific subset of data (i.e. if looking at multiple libraries, double-clicking on the specific library name will show data for that library only).
         
         """)
 

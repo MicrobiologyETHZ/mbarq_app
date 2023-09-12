@@ -21,8 +21,8 @@ def app():
         st.markdown(f"""
         #### Count data:
         
-        - For this page you need to upload a **csv** file of merged counts produced by `mbarq count` + `mbarq merge`. For instruction on how to generate this file, please see [here]({count_url}).
-        - The first column must contain the barcodes, the second column must contain gene identifier (ex. locus tag). 
+        - For this page, you need to upload a **csv** file of merged counts produced by `mbarq count` + `mbarq merge`. For instructions on how to generate this file, please see [here]({count_url}).
+        - The first column must contain the barcodes, and the second column must contain the gene identifier (ex. locus tag). 
         - All other columns must be sample names. 
         #
         Example structure:
@@ -33,7 +33,7 @@ def app():
         st.markdown("""
         #### Sample data:
         - A **csv** file containing sample data. 
-        - First column must contain sample names that correspond to sample names in the count file.  
+        - The first column must contain sample names that correspond to sample names in the count file.  
         - All other columns will be read in as metadata.
         #
         
@@ -44,10 +44,10 @@ def app():
         st.table(test)
         st.markdown("""
 
-        - Merged count table produced by `mbarq` will contain barcodes found in the mapping file, as well as unannotated barcodes (e.g. control spike-ins, artifacts). Only annotated barcodes are used for the exploratory analysis.
-        - Simple TSS normalisation and log2 transformation is performed.
-        - For PCA plot, you can choose how many barcodes are used for the analysis, as well as which components to visualise. Scree plot shows the % of variance explained by each of the PCs. 
-        - For Barcode Abundance, normalised barcode counts can be visualised for any gene of interest and compared across different sample data variables. 
+        - The merged count table produced by `mbarq` will contain barcodes found in the mapping file, as well as unannotated barcodes (e.g. control spike-ins, artifacts). Only annotated barcodes are used for the exploratory analysis.
+        - Simple TSS normalization and log2 transformation are performed.
+        - For PCA plot, you can choose how many barcodes are used for the analysis, as well as which components to visualize. The scree plot shows the % of variance explained by each of the PCs. 
+        - For Barcode Abundance, normalized barcode counts can be visualized for any gene of interest and compared across different sample data variables. 
         """)
 
     # LOAD THE DATA
