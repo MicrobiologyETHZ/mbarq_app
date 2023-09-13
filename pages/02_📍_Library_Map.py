@@ -3,6 +3,7 @@ import pandas as pd
 import streamlit as st
 from scripts.datasets import LibraryMap, convert_df
 from scripts.graphs import define_color_scheme
+import dash_bio
 st.set_page_config(layout='wide')
 
 
@@ -36,6 +37,7 @@ def app():
             map_files = [Path('examples/example_library_map.annotated.csv')]
             st.subheader('Example mapping file')
             df = pd.read_csv(map_files[0])
+            df["library"] = 'example_library'
             st.download_button(
                 label="Download example data as CSV",
                 data=convert_df(df),
@@ -79,6 +81,20 @@ def app():
 
             st.plotly_chart(fig, use_container_width=True)
 
+#    with st.container():
+#        st.subheader('Needle Plot')
+#        co1, co2, co3 = st.columns(3)
+#        gene_choice = co1.selectbox('Choose gene to display', lm.lib_map["Name"].unique())
 
+#        test = dash_bio.NeedlePlot(
+#            id='dashbio-default-needleplot',
+#            mutationData={'x': ['50', '175'], 'y': ['1', '1'], 'mutationGroups': ['Insert', 'Insert'],
+#                          'domains': [{'name': 'Gene1', 'coord': '1-100'},
+#                                      {'name': 'Gene2', 'coord': '150-200'}]}
+#        )
+#        st.plotly_chart(test)
 
 app()
+
+
+

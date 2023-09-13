@@ -57,7 +57,7 @@ def app():
         # SUBSET DATAFRAME TO SPECIFIC CONTRAST AND LIBRARY
         contrast_col, lfc_col1, lfc_col2, fdr_col = st.columns(4)
         contrast_to_show = contrast_col.selectbox('Select a contrast', contrasts)
-        fdr_th = fdr_col.number_input('adjusted p-value cutoff', value=0.05)
+        fdr_th = fdr_col.number_input('Adjusted p-value cutoff', value=0.05)
         type_lfc_th = lfc_col1.radio('Absolute LFC cutoff or define range', ['Absolute', 'Range'])
         if type_lfc_th == 'Absolute':
             lfc_low = lfc_col2.number_input('LFC cutoff (absolute)', min_value=0.0, step=0.5, value=1.0)
