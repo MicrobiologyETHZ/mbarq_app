@@ -3,7 +3,7 @@ import pandas as pd
 import streamlit as st
 from scripts.datasets import LibraryMap, convert_df
 from scripts.graphs import define_color_scheme
-import dash_bio
+#import dash_bio
 st.set_page_config(layout='wide')
 
 
