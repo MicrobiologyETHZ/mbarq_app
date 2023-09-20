@@ -11,8 +11,8 @@ import pandas as pd
 import plotly.express as px
 
 # security issue
-#import ssl
-#ssl._create_default_https_context = ssl._create_unverified_context
+import ssl
+ssl._create_default_https_context = ssl._create_unverified_context
 
 def app():
     st.markdown(""" ## Visualize fitness results with KEGG pathways """)
@@ -92,10 +92,6 @@ def app():
         if st.button("Draw map"):
             with st.spinner(f'Drawing {pathway_name} for {contrast_to_show}'):
                 pathway_gene_names = kmd.display_kegg_map(pathway_name, f"{pathway_name}-{contrast_to_show}", numeric)
-            st.subheader(pathway_description.split(":")[1])
-            fig = rds.display_pathway_heatmap(pathway_gene_names, kegg_id)
-            st.plotly_chart(fig, use_container_width=True)
-
 
 
 app()

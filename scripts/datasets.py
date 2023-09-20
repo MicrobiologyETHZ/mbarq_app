@@ -510,15 +510,6 @@ class KeggMapsDataset:
         :rtype: str
 
         """
-
-            # match = re.findall(r"(?<=[a-zA-Z_])\d+", string)
-            # positive lookbehind (?<=)
-            # searches from behind --> if match takes the part
-            # after the match
-            # \D means "not a digit"
-            # \d matches a digit (equivalent to [0-9])
-            # and matches the previous token between one and unlimited times,
-            # as many times as possible, giving back as needed (greedy)
         if not gene_name:
             return
         match = re.findall(r"(?<=[\D])\d+", gene_name)
@@ -566,11 +557,8 @@ class KeggMapsDataset:
         fname = f"{title}_map.pdf"
         canvas.draw(fname)
         k1, k2 = st.columns(2)
-        st.info("Display works in Firefox only")
-        if k1.button(f'Display {pathway_name} map'):
-            self.displayPDF(fname)
         with open(fname, "rb") as f:
-            k2.download_button(
+            k1.download_button(
                 f"Download {pathway_name} map",
                 data=f,
                 file_name=fname,
