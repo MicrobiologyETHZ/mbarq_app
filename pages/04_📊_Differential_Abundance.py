@@ -11,8 +11,8 @@ def app():
         st.markdown(f"""
         
         #### Fitness data: 
-        - For this page you need to upload a `csv` file produced by `mbarq analyze` command. To learn more about how to use `mbarq analyze`, please read [here]({an_url}).
-        - First column must be a gene identifier (for example, locus tag). 
+        - For this page, you need to upload a `csv` file produced by the `mbarq analyze` command. To learn more about how to use `mbarq analyze`, please read [here]({an_url}).
+        - The first column must be a gene identifier (for example, locus tag). 
         - Must also include `LFC` and `contrast` columns, where `LFC` is log2 fold change in gene abundance for a specific treatment compared to control, and `contrast` specifies the treatment.  
         - You can define hits by setting LFC and FDR cutoffs, and visualize them either by rank or via heatmaps. 
         
@@ -24,7 +24,7 @@ def app():
             rds = st.session_state['results_ds']
             #gene_id = st.session_state['results_gene_id']
         else:
-            st.info('Browse example results file or upload your data in **⬆️ Data Upload**')
+            st.info('Browse the example results file or upload your data in **⬆️ Data Upload**')
             result_files = [Path("examples/example_rra_results.csv")]
             gene_id = 'Name'
             rds = ResultDataSet(result_files=result_files, gene_id=gene_id)
