@@ -50,7 +50,7 @@ def barcode_abundance_layout(cds):
     st.write('## Barcode Abundance')
     with st.expander('Show Barcode Abundance'):
         c1, c2 = st.columns(2)
-        compare_condition = c1.selectbox('Which conditions to compare?', cds.sample_data.columns)
+        compare_condition = c1.selectbox('Which conditions to compare?', sorted(cds.sample_data.columns))
         condition_categories = c1.multiselect(f'Categories of {compare_condition} to display',
                                               ['All'] + list(cds.sample_data[compare_condition].unique()),
                                               default='All')
@@ -63,7 +63,8 @@ def barcode_abundance_layout(cds):
                                                list(cds.sample_data[filter_condition].unique()))
         if 'All' in condition_categories:
             condition_categories = list(cds.sample_data[compare_condition].unique())
-        genes = st.multiselect("Choose gene(s) of interest", cds.count_data[cds.gene_name_col].unique())
+        default_genes =  [ex for ex in  ['dcuS', 'dcuR'] if ex in cds.count_data[cds.gene_name_col].unique()]
+        genes = st.multiselect("Choose gene(s) of interest", cds.count_data[cds.gene_name_col].unique(), default=default_genes)
         if len(genes) * len(condition_categories) > 40:
             st.write('Too many genes/categories to display, consider choosing fewer genes.')
         else:
