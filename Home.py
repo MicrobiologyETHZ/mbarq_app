@@ -24,7 +24,7 @@ def home_page():
     
     ## Pages:
     
-    Below is a quick summary of each of the pages, visit each of the pages to browse the example data set. Our example dataset was produced by re-analysing RB-TnSeq data from [this Salmonella pathogenesis study]() with `mBARq`. 
+    Below is a quick summary of each of the pages, visit each of the pages to browse the example data set. Our example dataset was produced by re-analysing RB-TnSeq data from [this Salmonella pathogenesis study](https://doi.org/10.1016/j.chom.2020.04.013) with `mBARq`. 
         
     
     ### ⬆️ Data Upload 
