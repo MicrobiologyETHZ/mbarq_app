@@ -9,12 +9,13 @@ st.image("images/mbarq-logo.png")
 
 def home_page():
     repo_url = "https://github.com/MicrobiologyETHZ/mbarq"
+    paper_url = "https://doi.org/10.1093/bioinformatics/btae078"
     docs_url = "https://mbarq.readthedocs.io/en/latest/"
     string_url = "https://string-db.org/"
     kegg_url = "https://www.genome.jp/kegg/"
     st.info(f""" 
     
-    DNA barcoding has become a powerful tool for assessing the fitness of strains in a variety of studies, including random transposon mutagenesis screens, attenuation of site-directed mutants, and population dynamics of isogenic strain pools. For example, an addition of a random DNA barcode sequence into each transposon have significantly increased experimental throughput of random transposon mutagenesis screens and allowed in depth characterization of gene fitness across multiple bacterial species. To facilitate the data analysis of such screens, we provide mBARq (pronounced: ‘embark’), a versatile and user-friendly framework for the analysis and interpretation of RB-TnSeq and other barcoded sequencing data. [Our command line tool]({repo_url}) allows mapping, counting and statistical analysis of RB-TnSeq data.  This companion web app enables customized quality control, visualization of the results and exploratory data analysis via integration with the [STRING]({string_url}) and [KEGG]({kegg_url}) databases.  To learn more about the analysis of barcoded sequencing data using mBARq, please read the [documentation]({docs_url}). 
+    DNA barcoding has become a powerful tool for assessing the fitness of strains in a variety of studies, including random transposon mutagenesis screens, attenuation of site-directed mutants, and population dynamics of isogenic strain pools. For example, an addition of a random DNA barcode sequence into each transposon have significantly increased experimental throughput of random transposon mutagenesis screens and allowed in depth characterization of gene fitness across multiple bacterial species. To facilitate the data analysis of such screens, we provide mBARq (pronounced: ‘embark’), a versatile and user-friendly framework for the analysis and interpretation of RB-TnSeq and other barcoded sequencing data. [Our command line tool]({repo_url}) allows mapping, counting and statistical analysis of RB-TnSeq data. To learn more about mBARq please consult [the publication]({paper_url}). This companion web app enables customized quality control, visualization of the results and exploratory data analysis via integration with the [STRING]({string_url}) and [KEGG]({kegg_url}) databases.  To learn more about the analysis of barcoded sequencing data using mBARq, please read the [documentation]({docs_url}). 
    
     """)
 
