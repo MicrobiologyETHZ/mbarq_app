@@ -32,6 +32,7 @@ Vary: Accept-Encoding
 
 ## Prerequisite
 * [Docker](https://docs.docker.com/engine/install/) !!! Ensure you can do docker without sudo in your local env
+* Access the micro-flask server `micro-flask-dev.ethz.ch`
 
 ## By Script
 
