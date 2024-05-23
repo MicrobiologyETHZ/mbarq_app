@@ -41,7 +41,7 @@ def define_color_scheme():
                     'lgreen': '#92D050',
                     'dblue': '#366092',
                     'lblue': '#95B3D7'}
-    all_clrs = ['#F79646', '#366092', '#00B04E', '#C0504D', app_colors['teal'], app_colors['maroon']] + alphabet_clrs
+    all_clrs = ['#F79646', '#366092', '#8fce00', '#C0504D', app_colors['teal'], app_colors['maroon']] + alphabet_clrs
     return alphabet_clrs, app_colors, all_clrs
 
 

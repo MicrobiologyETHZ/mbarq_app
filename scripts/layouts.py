@@ -10,9 +10,11 @@ def pca_layout(cds):
         st.write('### PCA Options')
         c1, c2, c3, c4 = st.columns(4)
         num_components = c1.number_input("Number of PCs", min_value=2, max_value=50, value=10)
+        max_value = cds.count_data.shape[0]
+        defv = max_value if max_value <= 100 else int(max(100,  max_value * 0.1))
         num_genes = c2.number_input("Number of genes to use", min_value=int(num_components),
-                                    value=int(max(100, cds.count_data.shape[0] * 0.1)),
-                                    max_value=int(cds.count_data.shape[0]),
+                                    value=defv,
+                                    max_value=int(max_value),
                                     help='By default, uses top 10% most variable barcodes')
         choose_by = 'variance'
         num_genes = int(num_genes)
