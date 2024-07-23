@@ -69,14 +69,17 @@ class LibraryMap:
         self.barcode_col = col_name_config['barcode_col']
         self.distance_col = col_name_config['distance_col']
 
-    def load_map(self):
+    def load_map(self, silent=False):
         map_dfs = []
         if self.map_files:
             for uploaded_map in self.map_files:
-                st.write(f"_Processing {uploaded_map.name}_")
+                if not silent:
+                    st.write(f"_Processing {uploaded_map.name}_")
                 df, df_name = pd.read_csv(uploaded_map), uploaded_map.name
                 if 'library' not in df.columns:
-                    library_name = st.text_input("Change library name?", value=df_name)
+                    library_name = df_name
+                    if not silent:
+                        library_name = st.text_input("Change library name?", value=library_name)
                     df['library'] = library_name
                 missing_cols = [c for c in self.fixed_column_names if c not in df.columns]
                 if len(missing_cols) > 0:
@@ -161,7 +164,7 @@ class LibraryMap:
 
 
 class CountDataSet:
-    def __init__(self, count_file, sample_data_file, config_file: str = 'scripts/config.yaml'):
+    def __init__(self, count_file, sample_data_file, config_file: str = 'scripts/config.yaml', silent=False):
         self.count_file = count_file
         self.sample_data_file = sample_data_file
         self.count_data = pd.read_csv(self.count_file)
@@ -174,17 +177,19 @@ class CountDataSet:
         self.barcode_col = self.col_name_config['barcode_col']
         self.gene_name_col = self.col_name_config['gene_name_col']
         self.sample_id_col = self.col_name_config['sample_id_col']
-        self.valid = self._validate()
+        self.valid = self._validate(silent=silent)
         self.norm_counts = pd.DataFrame()
 
-    def _validate(self):
+    def _validate(self, silent=False):
         """
         First column of sample_data should be sampleIDs
         """
-        st.write(f"_Using {self.sample_data.columns[0]} to identify samples_")
+        if not silent:
+            st.write(f"_Using {self.sample_data.columns[0]} to identify samples_")
         self.sample_data = self.sample_data.rename({self.sample_data.columns[0]: self.sample_id_col}, axis=1)
-        st.write(f"_Using {self.count_data.columns[0]} to identify barcodes_")
-        st.write(f"_Using {self.count_data.columns[1]} to identify genes_")
+        if not silent:
+            st.write(f"_Using {self.count_data.columns[0]} to identify barcodes_")
+            st.write(f"_Using {self.count_data.columns[1]} to identify genes_")
         self.count_data = (self.count_data.rename({self.count_data.columns[0]: self.barcode_col,
                                                    self.count_data.columns[1]: self.gene_name_col}, axis=1)
                            .dropna(subset=[self.gene_name_col])
@@ -302,13 +307,16 @@ class ResultDataSet:
         self.kegg_df = pd.DataFrame()
         self.alphabet_clrs, self.app_colors, self.all_clrs = define_color_scheme()
 
-    def load_results(self):
+    def load_results(self, silent=False):
         results_df_list = []
         for uploaded_result in self.result_files:
-            st.write(f"_Processing {uploaded_result.name}_")
+            if not silent:
+                st.write(f"_Processing {uploaded_result.name}_")
             df = pd.read_csv(uploaded_result)
             if 'library' not in df.columns:
-                library_name = st.text_input("Add experiment name", value=uploaded_result.name.split("_rra")[0])
+                library_name = uploaded_result.name.split("_rra")[0]
+                if not silent:
+                    library_name = st.text_input("Add experiment name", value=library_name)
                 df['library'] = library_name
             if self.gene_id not in df.columns:
                 st.warning(f""" No {self.gene_id} column found. Using {df.columns[0]} as gene names to display""")
@@ -341,6 +349,7 @@ class ResultDataSet:
         except SchemaError as err:
             st.error(f"""Schema Error: {err.args[0]}""")
 
+
     def identify_hits(self, library_to_show, lfc_low, lfc_hi, fdr_th):
         self.hit_df = self.results_df.copy()
         if not lfc_hi:
@@ -358,19 +367,29 @@ class ResultDataSet:
             self.hit_df['library_nunique'] = 1
             self.hit_df['hit_sum'] = self.hit_df['hit']
         else:
+            # How to define hits from multiple libraries
+            # Median LFC > cutoff + hit in at least 1 library
             df_grouped = (self.hit_df.groupby([self.gene_id, self.contrast_col])
                           .agg({self.lfc_col: ['median'], self.library_col: ['nunique'],
                                 'hit': ['sum']})
                           .reset_index())
             df_grouped.columns = [self.gene_id, self.contrast_col, 'LFC_median', 'library_nunique', 'hit_sum']
 
+            if not lfc_hi:
+                df_grouped['hit_all'] = ((abs(df_grouped['LFC_median']) > lfc_low)
+                                        & (df_grouped['hit_sum'] > 0))
+            else:
+                df_grouped['hit_all'] = ((df_grouped['LFC_median'] > lfc_low) &
+                                        (df_grouped['LFC_median'] < lfc_hi) &
+                                      (df_grouped['hit_sum'] > 0))
             self.hit_df = self.hit_df.merge(df_grouped, on=[self.gene_id, self.contrast_col], how='left')
 
-    def graph_by_rank(self, contrast=(), kegg=False):
+    def graph_by_rank(self,  contrast=(), kegg=False, multiple_libs=False):
         rank_df = self.kegg_df if kegg else self.hit_df
         if contrast:
             rank_df = rank_df[rank_df[self.contrast_col].isin(contrast)]
-        rank_df = (rank_df[[self.gene_id, self.contrast_col, 'LFC_median', 'hit', 'fdr']].drop_duplicates()
+        hit_col = 'hit_all' if multiple_libs else 'hit'
+        rank_df = (rank_df[[self.gene_id, self.contrast_col, 'LFC_median', hit_col, 'fdr']].drop_duplicates()
                    .sort_values('LFC_median')
                    .reset_index()
                    .reset_index()
@@ -379,7 +398,7 @@ class ResultDataSet:
 
         hover_dict = {self.gene_id: True, self.contrast_col: True, 'LFC_median': True, 'fdr': True, 'ranking': False}
 
-        fig = px.scatter(rank_df, x='ranking', y='LFC_median', color='hit', symbol=self.contrast_col,
+        fig = px.scatter(rank_df, x='ranking', y='LFC_median', color=hit_col, symbol=self.contrast_col,
                          height=500,
                          color_discrete_map={
                              True: self.app_colors['darko'],

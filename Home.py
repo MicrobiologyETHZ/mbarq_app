@@ -1,4 +1,5 @@
 import streamlit as st
+import plotly.express as px
 from PIL import Image
 
 st.set_page_config(page_title="mBARq App", layout='wide',
@@ -72,6 +73,6 @@ def home_page():
     - Requires a `csv` file produced by `mbarq analyze` command. This file lists log fold changes (LFC) and false discover rates (FDRs) for each gene in the library.
     - This page allows you to visualize the results in the context of KEGG metabolic maps.
         """)
-
+    
 
 home_page()
