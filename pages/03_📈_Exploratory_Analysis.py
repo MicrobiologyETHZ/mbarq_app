@@ -112,7 +112,7 @@ def app():
 
             else:
                 st.warning(
-                    "Showing mapping file from the Nguyen et al., 2024 study")
+                    f"Showing mapping file from the [Nguyen et al., 2024 study]({nguyen_2024})")
                 av_libs = list(Path("examples/nguyen_2024/counts").rglob("library*"))
                 av_libs = {c.stem: c for c in av_libs}
                 which_library = st.selectbox("Choose library to explore", options=av_libs.keys(), 

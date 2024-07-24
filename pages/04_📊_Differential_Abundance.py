@@ -51,7 +51,7 @@ def app():
                 
             if st.session_state['study'] == 19:
                 st.warning(
-                    f"Showing mapping file from [Nguyen et al., 2020 study]({nguyen_2020})")
+                    f"Showing mapping file from the [Nguyen et al., 2020 study]({nguyen_2020})")
                 result_files = [Path("examples/example_rra_results_annotated.csv")]
                 gene_id = 'Name'
                 rds = ResultDataSet(result_files=result_files, gene_id=gene_id)
@@ -65,7 +65,7 @@ def app():
                         st.write('Result table is empty')
             else:
                 st.warning(
-                    "Showing mapping file from Nguyen et al., 2024 study")
+                    f"Showing mapping file from the [Nguyen et al., 2024 study]({nguyen_2024})")
                 result_files = list(Path("examples/nguyen_2024/results").rglob("*rra_results*"))
                 gene_id = 'Name'
                 rds = ResultDataSet(result_files=result_files, gene_id=gene_id)

@@ -70,7 +70,7 @@ def app():
             else:
                 # todo update the link when published
                 st.warning(
-                    "Showing mapping file from the Nguyen et al., 2024 study")
+                    f"Showing mapping file from the [Nguyen et al., 2024 study]({nguyen_2024})")
                 map_files = list(
                     Path('examples/nguyen_2024/maps/').rglob("*.csv.gz"))
                 lm = LibraryMap(map_files=map_files)
