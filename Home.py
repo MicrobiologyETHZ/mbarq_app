@@ -1,5 +1,6 @@
 import streamlit as st
 from PIL import Image
+import yaml
 
 st.set_page_config(page_title="mBARq App", layout='wide',
                    page_icon=Image.open("images/image.png")
@@ -8,11 +9,16 @@ st.image("images/mbarq-logo.png")
 
 
 def home_page():
-    repo_url = "https://github.com/MicrobiologyETHZ/mbarq"
-    paper_url = "https://doi.org/10.1093/bioinformatics/btae078"
-    docs_url = "https://mbarq.readthedocs.io/en/latest/"
-    string_url = "https://string-db.org/"
-    kegg_url = "https://www.genome.jp/kegg/"
+    config_file = "scripts/config.yaml"
+    with open(config_file, 'r') as cf:
+        config = yaml.load(cf, Loader=yaml.SafeLoader)
+
+    repo_url = config['links']['mbarq_repo']
+    paper_url = config['links']['mbarq_paper']
+    docs_url = config['links']['docs_url']
+    string_url = config['links']['string_database']
+    kegg_url = config['links']['kegg_database']
+
     st.info(f""" 
     
     DNA barcoding has become a powerful tool for assessing the fitness of strains in a variety of studies, including random transposon mutagenesis screens, attenuation of site-directed mutants, and population dynamics of isogenic strain pools. For example, adding a random DNA barcode sequence into each transposon has significantly increased the experimental throughput of random transposon mutagenesis screens and allowed in-depth characterization of gene fitness across multiple bacterial species. To facilitate the data analysis of such screens, we provide mBARq (pronounced: ‘embark’), a versatile and user-friendly framework for the analysis and interpretation of RB-TnSeq and other barcoded sequencing data. [Our command line tool]({repo_url}) allows mapping, counting, and statistical analysis of RB-TnSeq data. To learn more about mBARq please consult [the publication]({paper_url}). This companion web app enables customized quality control, visualization of the results, and exploratory data analysis via integration with the [STRING]({string_url}) and [KEGG]({kegg_url}) databases.  To learn more about the analysis of barcoded sequencing data using mBARq, please read the [documentation]({docs_url}). 
