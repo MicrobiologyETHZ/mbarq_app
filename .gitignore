@@ -422,3 +422,5 @@ buildNumber.properties
 # added by Anna for general purposes :)
 
 !scripts/tests/dnaid2023_metadata.txt
+
+.idea/
