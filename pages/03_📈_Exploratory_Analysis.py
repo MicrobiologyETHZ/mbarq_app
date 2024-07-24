@@ -3,10 +3,15 @@ from scripts.datasets import CountDataSet, convert_df, define_color_scheme
 import pandas as pd
 from scripts.layouts import pca_layout, barcode_abundance_layout
 from pathlib import Path
+import yaml
 st.set_page_config(layout='wide')
 
 
 def app():
+    config_file = "scripts/config.yaml"
+    with open(config_file, 'r') as cf:
+        config = yaml.load(cf, Loader=yaml.SafeLoader)
+
     hide_dataframe_row_index = """
                 <style>
                 .row_heading.level0 {display:none}
@@ -17,12 +22,12 @@ def app():
     st.markdown(""" # Exploratory Analysis """)
     with st.expander("How this works: "):
 
-        count_url = 'https://mbarq.readthedocs.io/en/latest/counting.html'
+        count_url = config['links']['counting_url']
         st.markdown(f"""
         #### Count data:
         
-        - For this page you need to upload a **csv** file of merged counts produced by `mbarq count` + `mbarq merge`. For instruction on how to generate this file, please see [here]({count_url}).
-        - The first column must contain the barcodes, the second column must contain gene identifier (ex. locus tag). 
+        - For this page, you need to upload a **csv** file of merged counts produced by `mbarq count` and `mbarq merge`. For instructions on how to generate this file, please see [here]({count_url}).
+        - The first column must contain the barcodes, and the second column must contain the gene identifier (ex. locus tag). 
         - All other columns must be sample names. 
         #
         Example structure:
@@ -33,7 +38,7 @@ def app():
         st.markdown("""
         #### Sample data:
         - A **csv** file containing sample data. 
-        - First column must contain sample names that correspond to sample names in the count file.  
+        - The first column must contain sample names that correspond to sample names in the count file.  
         - All other columns will be read in as metadata.
         #
         
@@ -44,10 +49,10 @@ def app():
         st.table(test)
         st.markdown("""
 
-        - Merged count table produced by `mbarq` will contain barcodes found in the mapping file, as well as unannotated barcodes (e.g. control spike-ins, artifacts). Only annotated barcodes are used for the exploratory analysis.
-        - Simple TSS normalisation and log2 transformation is performed.
-        - For PCA plot, you can choose how many barcodes are used for the analysis, as well as which components to visualise. Scree plot shows the % of variance explained by each of the PCs. 
-        - For Barcode Abundance, normalised barcode counts can be visualised for any gene of interest and compared across different sample data variables. 
+        - The merged count table produced by `mbarq` will contain barcodes found in the mapping file, as well as unannotated barcodes (e.g. control spike-ins, artifacts). Only annotated barcodes are used for the exploratory analysis.
+        - Simple TSS normalization and log2 transformation are performed.
+        - For PCA plot, you can choose how many barcodes are used for the analysis, as well as which components to visualize. The scree plot shows the % of variance explained by each of the PCs. 
+        - For Barcode Abundance, normalized barcode counts can be visualized for any gene of interest and compared across different sample data variables. 
         """)
 
     # LOAD THE DATA
@@ -56,31 +61,65 @@ def app():
         if 'count_ds' in st.session_state.keys():
             cds = st.session_state['count_ds']
         else:
-            st.info('Browse the example data set below or load your own data on **⬆️ Data Upload** page')
-            cfile = "examples/example_mbarq_merged_counts.csv"
-            mfile = "examples/example_sample_data.csv"
-            c1, c2 = st.columns(2)
-            c1.subheader('Example count file (sample)')
-            ex_df = pd.read_csv(cfile)
-            ex_sample_df = pd.read_csv(mfile)
-            samples_to_show = ['dnaid1315_10', 'dnaid1315_107']
-            c1.write(ex_df[['barcode', 'Name'] + samples_to_show].dropna().head())
-            c2.subheader('Example metadata file (sample)')
-            c2.write(pd.read_csv(mfile, index_col=0).loc[samples_to_show].reset_index())
-            c1.download_button(
-                label="Download example count data as CSV",
-                data=convert_df(ex_df),
-                file_name='example_counts_file.csv',
-                mime='text/csv',
-            )
+            nguyen_2020 = config['links']['nguyen_2020']
+            nguyen_2024 = config['links']['nguyen_2024']
+            salmonella_workflow_url = config['links']['salmonella_workflow']
+            mbarq_paper = config['links']['mbarq_paper']
 
-            c2.download_button(
-                label="Download example sample data as CSV",
-                data=convert_df(ex_sample_df),
-                file_name='example_sample_data_file.csv',
-                mime='text/csv',
-            )
-            cds = CountDataSet(cfile, mfile)
+            st.info(f'Below you can browse the results of two RB-TnSeq *Salmonella* screens. To analyze your own data,  please go to **⬆️ Data Upload** page. The count tables available below were generated by running `mbarq count` on raw sequencing data from [Nguyen et al 2020 study]({nguyen_2020}) and [Nguyen et al 2024 study]({nguyen_2024}). For more information about the analysis, please see [mBARq documentation]({salmonella_workflow_url}) and [mBARq paper]({mbarq_paper}).')
+
+            if 'study' not in st.session_state.keys():
+                st.session_state['study'] = 19
+            col1, col2 = st.columns(2)
+            with col1:
+                button1 = st.button('**Nguyen et al., 2019**')
+            with col2:
+                button2 = st.button('**Nguyen et al., 2024**')
+
+            if button1:
+                st.session_state['study'] = 19
+            if button2: 
+                st.session_state['study'] = 24
+                
+            if st.session_state['study'] == 19:
+                st.warning(
+                    f"Showing mapping file from [Nguyen et al., 2020 study]({nguyen_2020})")
+                
+                cfile = "examples/example_mbarq_merged_counts.csv"
+                mfile = "examples/example_sample_data.csv"
+                c1, c2 = st.columns(2)
+                c1.subheader('Example count file (sample)')
+                ex_df = pd.read_csv(cfile)
+                ex_sample_df = pd.read_csv(mfile)
+                samples_to_show = ['dnaid1315_10', 'dnaid1315_107']
+                c1.write(ex_df[['barcode', 'Name'] + samples_to_show].dropna().head())
+                c2.subheader('Example metadata file (sample)')
+                c2.write(pd.read_csv(mfile, index_col=0).loc[samples_to_show].reset_index())
+                c1.download_button(
+                    label="Download example count data as CSV",
+                    data=convert_df(ex_df),
+                    file_name='example_counts_file.csv',
+                    mime='text/csv',
+                )
+
+                c2.download_button(
+                    label="Download example sample data as CSV",
+                    data=convert_df(ex_sample_df),
+                    file_name='example_sample_data_file.csv',
+                    mime='text/csv',
+                )
+                cds = CountDataSet(cfile, mfile, silent=True)
+
+            else:
+                st.warning(
+                    "Showing mapping file from Nguyen et al., 2024 study")
+                av_libs = list(Path("examples/nguyen_2024/counts").rglob("library*"))
+                av_libs = {c.stem: c for c in av_libs}
+                which_library = st.selectbox("Choose library to explore", options=av_libs.keys(), 
+                                             )
+                mfile = "examples/nguyen_2024/counts/nguyen-2024-sample-data.csv.gz"
+                cfile = av_libs[which_library]
+                cds = CountDataSet(cfile, mfile, silent=True)
         # IF DATA IS LOADED VISUALIZE
         if cds.valid:
             cds.normalize_counts()

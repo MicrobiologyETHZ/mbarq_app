@@ -10,9 +10,11 @@ def pca_layout(cds):
         st.write('### PCA Options')
         c1, c2, c3, c4 = st.columns(4)
         num_components = c1.number_input("Number of PCs", min_value=2, max_value=50, value=10)
+        max_value = cds.count_data.shape[0]
+        defv = max_value if max_value <= 100 else int(max(100,  max_value * 0.1))
         num_genes = c2.number_input("Number of genes to use", min_value=int(num_components),
-                                    value=int(max(100, cds.count_data.shape[0] * 0.1)),
-                                    max_value=int(cds.count_data.shape[0]),
+                                    value=defv,
+                                    max_value=int(max_value),
                                     help='By default, uses top 10% most variable barcodes')
         choose_by = 'variance'
         num_genes = int(num_genes)
@@ -50,7 +52,7 @@ def barcode_abundance_layout(cds):
     st.write('## Barcode Abundance')
     with st.expander('Show Barcode Abundance'):
         c1, c2 = st.columns(2)
-        compare_condition = c1.selectbox('Which conditions to compare?', cds.sample_data.columns)
+        compare_condition = c1.selectbox('Which conditions to compare?', sorted(cds.sample_data.columns))
         condition_categories = c1.multiselect(f'Categories of {compare_condition} to display',
                                               ['All'] + list(cds.sample_data[compare_condition].unique()),
                                               default='All')
@@ -63,7 +65,8 @@ def barcode_abundance_layout(cds):
                                                list(cds.sample_data[filter_condition].unique()))
         if 'All' in condition_categories:
             condition_categories = list(cds.sample_data[compare_condition].unique())
-        genes = st.multiselect("Choose gene(s) of interest", cds.count_data[cds.gene_name_col].unique())
+        default_genes =  [ex for ex in  ['dcuS', 'dcuR'] if ex in cds.count_data[cds.gene_name_col].unique()]
+        genes = st.multiselect("Choose gene(s) of interest", cds.count_data[cds.gene_name_col].unique(), default=default_genes)
         if len(genes) * len(condition_categories) > 40:
             st.write('Too many genes/categories to display, consider choosing fewer genes.')
         else:
