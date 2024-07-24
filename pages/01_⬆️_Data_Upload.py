@@ -1,7 +1,6 @@
 import streamlit as st
 from scripts.datasets import LibraryMap, CountDataSet, ResultDataSet
 st.set_page_config(layout='wide')
-from random import randint
 
 def app():
 
