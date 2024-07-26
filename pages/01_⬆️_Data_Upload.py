@@ -21,8 +21,9 @@ def app():
         lm = LibraryMap(map_files=map_files)
         lm.load_map()
         lm.validate_lib_map()
-        st.session_state['lib_map'] = lm
-        st.session_state['annotations'] = lm.lib_map[lm.attributes].drop_duplicates()
+        if not lm.lib_map.empty:
+            st.session_state['lib_map'] = lm
+            st.session_state['annotations'] = lm.lib_map[lm.attributes].drop_duplicates()
 
     # If clear button is pressed removed the file and lib_map from session state
     if st.button('Clear loaded map', key='map_clear_button') and 'lib_map' in st.session_state.keys():

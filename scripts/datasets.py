@@ -112,7 +112,7 @@ class LibraryMap:
             self.lib_map = lib_schema.validate(self.lib_map)
 
         except SchemaError as err:
-            st.error(f"""Schema Error: {err.args[0]}""")
+            # st.error(f"""Schema Error: {err.args[0]}""")
             self.lib_map = pd.DataFrame()
 
     def graph_coverage_hist(self, chr_col_choice, num_bins, hist_col):
