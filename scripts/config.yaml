@@ -1,11 +1,15 @@
 links:
-  mbarq_paper: https://doi.org/10.1101/2023.11.27.568830
+  mbarq_paper: https://doi.org/10.1093/bioinformatics/btae078
+  mbarq_repo: https://github.com/MicrobiologyETHZ/mbarq
   nguyen_2020: https://doi.org/10.1016/j.chom.2020.04.013
-  nguyen_2024: 
+  nguyen_2024:
+  docs_url: https://mbarq.readthedocs.io/en/latest/
   mapping_url: https://mbarq.readthedocs.io/en/latest/mapping.html
   counting_url: https://mbarq.readthedocs.io/en/latest/counting.html
   analysis_url: https://mbarq.readthedocs.io/en/latest/analysis.html
   salmonella_workflow: https://mbarq.readthedocs.io/en/latest/salmonella.html
+  string_database: https://string-db.org/
+  kegg_database: https://www.genome.jp/kegg/
 
 library_map:
   fixed_column_names:
