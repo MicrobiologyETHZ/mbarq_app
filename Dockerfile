@@ -8,8 +8,8 @@ COPY requirements.txt requirements.txt
 
 RUN pip3 install -r requirements.txt
 
-copy . .
+COPY . .
 
 EXPOSE 8501
 
-ENTRYPOINT ["streamlit", "run", "Home.py", "--server.port=8501", "--server.address=0.0.0.0"]
+ENTRYPOINT ["streamlit", "run", "Home.py", "--server.port=8501", "--server.address=0.0.0.0", "--server.enableXsrfProtection=false"]
