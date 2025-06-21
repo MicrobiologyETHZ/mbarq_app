@@ -94,7 +94,7 @@ def app():
         with st.container():
             lm.get_stats()
             st.markdown("#### Insertion Summary")
-            st.table(lm.stats)
+            st.dataframe(lm.stats)
         # Graph coverage map or individual insertion abundance
         with st.container():
             # Define colors
@@ -112,13 +112,12 @@ def app():
                 try:
                     num_bins = c2.number_input(
                         'Number of bins', value=100, min_value=10, max_value=1000)
-                    hist_col = c3.text_input(
-                        'Color (hex, rgb, hsl, hsv, or color name)', value=colors['teal'])
+                    hist_col = c3.color_picker(
+                        'Color', value='#000000', key='histogram_color')
                     fig = lm.graph_coverage_hist(
                         chr_col_choice, num_bins, hist_col)
-                except ValueError:
-                    st.write(
-                        "Please enter a valid color. The following formats are accepted: hex, rgb, hsl, hsv or color name")
+                except ValueError as e:
+                    st.write(e)
                     return
 
             st.plotly_chart(fig, use_container_width=True)

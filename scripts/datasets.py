@@ -118,12 +118,13 @@ class LibraryMap:
     def graph_coverage_hist(self, chr_col_choice, num_bins, hist_col):
         df_to_show = self.lib_map[self.lib_map[self.chr_col] == chr_col_choice].sort_values(self.insertion_site_col)
         fig = px.histogram(df_to_show, x=self.insertion_site_col, nbins=int(num_bins),
-                           labels={self.insertion_site_col: 'Position, bp'}, color_discrete_sequence=[hist_col])
+                           labels={self.insertion_site_col: 'Position, bp'}, 
+                           color_discrete_sequence=[hist_col])
         fig.update_layout(bargap=0.1)
         fig.update_xaxes(showline=True, linewidth=1, linecolor='black',
-                         tickfont=dict(size=24, color='black'),  titlefont=dict(size=30, color='black'))
+                         tickfont=dict(size=24, color='black'), title_font=dict(size=30, color='black'))
         fig.update_yaxes(showline=True, linewidth=1, linecolor='black',
-                         tickfont=dict(size=24, color='black'), titlefont=dict(size=30, color='black'))
+                         tickfont=dict(size=24, color='black'), title_font=dict(size=30, color='black'))
         return fig
 
     def graph_insertions(self, chr_col_choice, color_by_choice, all_clrs):
@@ -139,9 +140,9 @@ class LibraryMap:
                           autosize=True,
                           font=dict(size=24))
         fig.update_xaxes(showline=True, linewidth=1, linecolor='black',
-                         tickfont=dict(size=18, color='black'), titlefont=dict(size=24, color='black'))
+                         tickfont=dict(size=18, color='black'), title_font=dict(size=24, color='black'))
         fig.update_yaxes(showline=True, linewidth=1, linecolor='black',
-                         tickfont=dict(size=18, color='black'), titlefont=dict(size=24, color='black'))
+                         tickfont=dict(size=18, color='black'), title_font=dict(size=24, color='black'))
         return fig
 
     def get_stats(self):
@@ -256,9 +257,9 @@ class CountDataSet:
                                                 color='DarkSlateGrey'), opacity=0.9),
                           selector=dict(mode='markers'))
         fig.update_xaxes(showline=True, linewidth=2, linecolor='black',
-                         tickfont=dict(size=font_size-6, color='black'), titlefont=dict(size=font_size, color='black'))
+                         tickfont=dict(size=font_size-6, color='black'), title_font=dict(size=font_size, color='black'))
         fig.update_yaxes(showline=True, linewidth=2, linecolor='black',
-                         tickfont=dict(size=font_size-6, color='black'), titlefont=dict(size=font_size, color='black'))
+                         tickfont=dict(size=font_size-6, color='black'), title_font=dict(size=font_size, color='black'))
         fig.update_layout(legend=dict(font=dict(size=font_size)), legend_title=dict(font=dict(size=font_size)))
         percent_variance_df = pd.DataFrame.from_dict(percent_variance, orient='index').reset_index()
         percent_variance_df.columns = ['PC', '% Variance']
@@ -426,10 +427,10 @@ class ResultDataSet:
 
         fig.update_xaxes(showline=True, linewidth=2, linecolor='black',
                          tickfont=dict(size=font_size - 6, color='black'),
-                         titlefont=dict(size=font_size, color='black'), tickangle=90)
+                         title_font=dict(size=font_size, color='black'), tickangle=90)
         fig.update_yaxes(showline=True, linewidth=2, linecolor='black',
                          tickfont=dict(size=font_size - 6, color='black'),
-                         titlefont=dict(size=font_size, color='black'))
+                         title_font=dict(size=font_size, color='black'))
         fig.update_layout(legend=dict(font=dict(size=font_size - 2, color='black')),
                           coloraxis_colorbar=dict(title=dict(text='LFC', font=dict(size=font_size, color='black')),
                                                   tickfont=dict(size=font_size - 2, color='black')))
