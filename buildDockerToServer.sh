@@ -17,7 +17,4 @@ echo "------Copy Docker Image + Redeploy Script To Server (takes time)------"
 scp "./${JAR_FILE}" "${REMOTE_HOST}:${REMOTE_DIR}/"
 scp "./${REDEPLOY_SCRIPT}" "${REMOTE_HOST}:${REMOTE_DIR}/"
 
-echo "------Redeploy on Server------"
-ssh "${REMOTE_HOST}" "cd '${REMOTE_DIR}' && chmod +x './${REDEPLOY_SCRIPT}' && ./'${REDEPLOY_SCRIPT}'"
-
 echo "------DONE------"
